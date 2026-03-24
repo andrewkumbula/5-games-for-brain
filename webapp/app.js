@@ -12,7 +12,6 @@ const resultTitleEl = document.getElementById("resultTitle");
 const resultSubtitleEl = document.getElementById("resultSubtitle");
 const controlsBlockEl = document.getElementById("controlsBlock");
 const keyboardEl = document.getElementById("keyboard");
-const guessInput = document.getElementById("guessInput");
 const guessBtn = document.getElementById("guessBtn");
 const playNextBtn = document.getElementById("playNextBtn");
 const KEY_ROWS = [
@@ -27,6 +26,7 @@ let allowedWords = new Set(words);
 let answer = "";
 let state = null;
 let isRevealing = false;
+let draftGuess = "";
 const REVEAL_STEP_MS = 190;
 const FLIP_RESET_MS = 380;
 
@@ -82,7 +82,6 @@ function load() {
 
 function render() {
   boardEl.innerHTML = "";
-  const draftGuess = normalize(guessInput.value).slice(0, WORD_LEN);
   const activeRow = state.guesses.length;
   for (let row = 0; row < ATTEMPTS; row += 1) {
     const guess =
@@ -99,7 +98,6 @@ function render() {
   }
 
   if (state.finished) {
-    guessInput.disabled = true;
     guessBtn.disabled = true;
     controlsBlockEl.classList.add("hidden");
     playNextBtn.classList.remove("hidden");
@@ -118,7 +116,6 @@ function render() {
     resultBlockEl.classList.remove("hidden");
     statusEl.textContent = "";
   } else {
-    guessInput.disabled = false;
     guessBtn.disabled = false;
     controlsBlockEl.classList.remove("hidden");
     playNextBtn.classList.add("hidden");
@@ -151,7 +148,6 @@ function haptic(kind) {
 
 async function revealRow(rowIndex, marks) {
   isRevealing = true;
-  guessInput.disabled = true;
   guessBtn.disabled = true;
   for (let col = 0; col < WORD_LEN; col += 1) {
     const tile = getTileAt(rowIndex, col);
@@ -166,9 +162,7 @@ async function revealRow(rowIndex, marks) {
   }
   isRevealing = false;
   if (!state.finished) {
-    guessInput.disabled = false;
     guessBtn.disabled = false;
-    guessInput.focus();
   } else {
     haptic(state.won ? "success" : "error");
   }
@@ -189,6 +183,7 @@ function formatLeft(total) {
 }
 
 function setupState(forceNext = false) {
+  draftGuess = "";
   const saved = load();
   let day = dayNumber();
   if (forceNext) {
@@ -212,8 +207,7 @@ function setupState(forceNext = false) {
 
 async function submitGuess() {
   if (state.finished || isRevealing) return;
-  const guess = normalize(guessInput.value);
-  guessInput.value = "";
+  const guess = normalize(draftGuess);
   if (!isValidWord(guess)) {
     statusEl.textContent = "Введите слово из 5 русских букв";
     haptic("error");
@@ -226,6 +220,7 @@ async function submitGuess() {
   }
   const marks = evaluate(answer, guess);
   const rowIndex = state.guesses.length;
+  draftGuess = "";
   state.guesses.push(guess);
   state.results.push(marks);
   state.won = guess === answer;
@@ -266,13 +261,13 @@ function onKeyboardToken(token) {
     return;
   }
   if (token === "backspace") {
-    guessInput.value = guessInput.value.slice(0, -1);
+    draftGuess = draftGuess.slice(0, -1);
     render();
     return;
   }
-  const value = normalize(guessInput.value);
+  const value = normalize(draftGuess);
   if (value.length >= WORD_LEN) return;
-  guessInput.value = value + token;
+  draftGuess = value + token;
   render();
 }
 
@@ -337,15 +332,28 @@ async function loadWords() {
 guessBtn.addEventListener("click", () => {
   void submitGuess();
 });
-guessInput.addEventListener("keydown", (e) => {
+document.addEventListener("keydown", (e) => {
+  if (state?.finished || isRevealing) {
+    return;
+  }
   if (e.key === "Enter") {
+    e.preventDefault();
     void submitGuess();
+    return;
+  }
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    onKeyboardToken("backspace");
+    return;
+  }
+  const key = normalize(e.key);
+  if (key.length === 1 && /^[а-я]$/.test(key)) {
+    e.preventDefault();
+    onKeyboardToken(key);
   }
 });
-guessInput.addEventListener("input", () => {
-  guessInput.value = normalize(guessInput.value).slice(0, WORD_LEN);
-});
 playNextBtn.addEventListener("click", () => {
+  draftGuess = "";
   setupState(true);
 });
 
