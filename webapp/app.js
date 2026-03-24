@@ -12,6 +12,7 @@ const resultTitleEl = document.getElementById("resultTitle");
 const resultSubtitleEl = document.getElementById("resultSubtitle");
 const controlsBlockEl = document.getElementById("controlsBlock");
 const keyboardEl = document.getElementById("keyboard");
+const hiddenInputEl = document.getElementById("hiddenInput");
 const guessBtn = document.getElementById("guessBtn");
 const playNextBtn = document.getElementById("playNextBtn");
 const KEY_ROWS = [
@@ -64,6 +65,12 @@ function normalize(value) {
 
 function isValidWord(value) {
   return /^[а-я]{5}$/.test(value);
+}
+
+function syncHiddenInput() {
+  if (hiddenInputEl) {
+    hiddenInputEl.value = draftGuess;
+  }
 }
 
 function pickWord(list, day) {
@@ -149,6 +156,7 @@ function render() {
     resultSubtitleEl.textContent = "";
     statusEl.textContent = "Введите слово из 5 букв";
   }
+  syncHiddenInput();
   renderKeyboard();
 }
 
@@ -303,9 +311,21 @@ function onKeyboardToken(token) {
     return;
   }
   const value = normalize(draftGuess);
-  if (value.length >= WORD_LEN) return;
+  if (value.length >= WORD_LEN) {
+    statusEl.textContent = "Слово уже из 5 букв. Нажмите ПРОВЕРИТЬ или удалите букву";
+    haptic("error");
+    return;
+  }
   draftGuess = value + token;
+  statusEl.textContent = "Введите слово из 5 букв";
   render();
+}
+
+function tryFocusHiddenInput() {
+  if (!hiddenInputEl || state?.finished || isRevealing) {
+    return;
+  }
+  hiddenInputEl.focus({ preventScroll: true });
 }
 
 function renderKeyboard() {
@@ -378,7 +398,7 @@ document.addEventListener("keydown", (e) => {
     void submitGuess();
     return;
   }
-  if (e.key === "Backspace") {
+  if (e.key === "Backspace" || e.key === "Delete") {
     e.preventDefault();
     onKeyboardToken("backspace");
     return;
@@ -387,8 +407,49 @@ document.addEventListener("keydown", (e) => {
   if (key.length === 1 && /^[а-я]$/.test(key)) {
     e.preventDefault();
     onKeyboardToken(key);
+    return;
+  }
+  if (key.length === 1 && /^[a-z]$/.test(key)) {
+    e.preventDefault();
+    statusEl.textContent = "Только русские буквы";
+    haptic("error");
   }
 });
+document.addEventListener("click", () => {
+  tryFocusHiddenInput();
+});
+if (hiddenInputEl) {
+  hiddenInputEl.addEventListener("beforeinput", (e) => {
+    if (state?.finished || isRevealing) {
+      e.preventDefault();
+      return;
+    }
+    if (e.inputType === "deleteContentBackward") {
+      e.preventDefault();
+      onKeyboardToken("backspace");
+      return;
+    }
+    if (e.inputType === "insertText") {
+      const text = normalize(e.data || "");
+      if (!text) {
+        e.preventDefault();
+        return;
+      }
+      if (/^[а-я]$/.test(text)) {
+        e.preventDefault();
+        onKeyboardToken(text);
+        return;
+      }
+      if (/^[a-z]$/.test(text)) {
+        e.preventDefault();
+        statusEl.textContent = "Только русские буквы";
+        haptic("error");
+        return;
+      }
+      e.preventDefault();
+    }
+  });
+}
 playNextBtn.addEventListener("click", () => {
   draftGuess = "";
   setupState(true);
@@ -404,3 +465,4 @@ loadWords().then(() => setupState());
 setInterval(() => {
   if (state?.finished) render();
 }, 1000);
+setTimeout(() => tryFocusHiddenInput(), 0);
