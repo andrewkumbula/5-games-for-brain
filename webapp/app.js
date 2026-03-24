@@ -126,15 +126,18 @@ function render() {
       const tile = document.createElement("div");
       tile.className = "tile";
       if (marks[col]) tile.classList.add(marks[col]);
+      const inner = document.createElement("span");
+      inner.className = "tile-inner";
       const ch = guess[col];
       if (ch) {
-        tile.textContent = ch.toUpperCase();
+        inner.textContent = ch.toUpperCase();
         if (!marks[col]) {
           tile.classList.add("tile--typing");
         }
       } else {
-        tile.textContent = "";
+        inner.textContent = "";
       }
+      tile.append(inner);
       rowEl.append(tile);
     }
     boardEl.append(rowEl);
