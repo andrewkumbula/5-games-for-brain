@@ -35,7 +35,7 @@ function dayNumber(now = new Date()) {
 }
 
 function normalize(value) {
-  return value.trim().toLowerCase().replaceAll("ё", "е");
+  return value.trim().toLowerCase().replace(/ё/g, "е");
 }
 
 function isValidWord(value) {
