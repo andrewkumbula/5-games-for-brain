@@ -116,6 +116,8 @@ function render() {
   boardEl.innerHTML = "";
   const activeRow = state.guesses.length;
   for (let row = 0; row < ATTEMPTS; row += 1) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "board-row";
     const guess =
       state.guesses[row] ||
       (!state.finished && row === activeRow ? draftGuess : "");
@@ -124,9 +126,18 @@ function render() {
       const tile = document.createElement("div");
       tile.className = "tile";
       if (marks[col]) tile.classList.add(marks[col]);
-      tile.textContent = guess ? guess[col].toUpperCase() : "";
-      boardEl.append(tile);
+      const ch = guess[col];
+      if (ch) {
+        tile.textContent = ch.toUpperCase();
+        if (!marks[col]) {
+          tile.classList.add("tile--typing");
+        }
+      } else {
+        tile.textContent = "";
+      }
+      rowEl.append(tile);
     }
+    boardEl.append(rowEl);
   }
 
   if (state.finished) {
@@ -160,7 +171,11 @@ function render() {
 }
 
 function getTileAt(row, col) {
-  return boardEl.children[row * WORD_LEN + col];
+  const rowEl = boardEl.children[row];
+  if (!rowEl) {
+    return null;
+  }
+  return rowEl.children[col] || null;
 }
 
 function haptic(kind) {
@@ -192,6 +207,7 @@ async function revealRow(rowIndex, marks) {
     await new Promise((resolve) => setTimeout(resolve, REVEAL_HALF_MS));
     const mark = marks[col];
     state.results[rowIndex][col] = mark;
+    tile.classList.remove("tile--typing");
     tile.classList.add(mark);
     renderKeyboard();
     haptic("light");
