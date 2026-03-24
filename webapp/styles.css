@@ -1,12 +1,17 @@
 :root {
   --bg: #0c0f14;
   --tile: #2f3238;
+  --tile-border: rgba(255, 255, 255, 0.28);
+  --tile-typing-bg: #454a54;
   --text: #f5f6f8;
   --muted: #8f949d;
   --green: #2dc84d;
   --yellow: #f5c84a;
   --black: #5a5f66;
   --badge: #31b5ff;
+  --tile-transform-ms: 280ms;
+  --tile-color-ms: 220ms;
+  --tile-flip-ms: 280ms;
 }
 
 * { box-sizing: border-box; }
@@ -21,6 +26,7 @@ body {
   margin: 0 auto;
   min-height: 100vh;
   padding: 18px 16px 22px;
+  overflow-x: hidden;
 }
 .badge {
   width: fit-content;
@@ -34,34 +40,93 @@ body {
   text-transform: uppercase;
 }
 .board {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-  border-radius: 10px;
-  overflow: hidden;
-}
-.tile {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  border: 1px solid var(--bg);
-  background: var(--tile);
-  border-radius: 0;
-  display: grid;
-  place-items: center;
-  font-size: clamp(2rem, 8vw, 2.8rem);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #2a2e33;
-  transition: transform 0.32s ease, background-color 0.28s ease;
+  max-width: 350px;
+  margin-left: auto;
+  margin-right: auto;
 }
-.tile.green { background: var(--green); color: #eafdeb; }
-.tile.yellow { background: var(--yellow); color: #fff; }
-.tile.black { background: var(--black); color: #2f3339; }
-.tile.flip { animation: flip 560ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+/* Ряд = горизонтальный flex (в TG WebView grid+minmax часто схлопывается в один столбец) */
+.board-row {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  width: 100%;
+  margin-bottom: 5px;
+  box-sizing: border-box;
+  transform: translateZ(0);
+}
+.board-row:last-child {
+  margin-bottom: 0;
+}
+.board-row > .tile {
+  flex: 1 1 0%;
+  -webkit-flex: 1 1 0%;
+  width: 0%;
+  min-width: 0;
+  position: relative;
+  border: 1px solid var(--tile-border);
+  background: var(--tile);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 5px;
+  box-sizing: border-box;
+  transition:
+    transform var(--tile-transform-ms) ease,
+    background-color var(--tile-color-ms) ease,
+    border-color var(--tile-color-ms) ease;
+}
+.board-row > .tile:last-child {
+  margin-right: 0;
+}
+/* Квадратная ячейка без aspect-ratio (старые WebView) */
+.board-row > .tile::before {
+  content: "";
+  display: block;
+  padding-top: 100%;
+}
+.tile-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+}
+/* Введённые буквы текущей строки (ещё без проверки) */
+.tile--typing {
+  background: var(--tile-typing-bg);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.tile--typing .tile-inner {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+.tile.green { background: var(--green); border-color: rgba(0, 0, 0, 0.12); }
+.tile.green .tile-inner { color: #eafdeb; }
+.tile.yellow { background: var(--yellow); border-color: rgba(0, 0, 0, 0.08); }
+.tile.yellow .tile-inner { color: #1a1508; text-shadow: none; }
+.tile.black { background: var(--black); border-color: rgba(0, 0, 0, 0.2); }
+.tile.black .tile-inner { color: #f4f6f9; }
+/* Плоское «переворачивание» вместо rotateX — ряд не «наезжает» */
+.tile.flip { animation: flip var(--tile-flip-ms) cubic-bezier(0.34, 0.85, 0.42, 1); }
 @keyframes flip {
-  0% { transform: rotateX(0); }
-  50% { transform: rotateX(90deg); }
-  100% { transform: rotateX(0); }
+  0% { transform: scaleY(1); }
+  45% { transform: scaleY(0.04); }
+  100% { transform: scaleY(1); }
 }
 
 .result {
@@ -103,19 +168,7 @@ body {
 
 .controls {
   margin-top: 12px;
-  display: flex;
-  gap: 8px;
-}
-.controls input {
-  flex: 1;
-  height: 46px;
-  border: 1px solid #3a3d45;
-  background: #181a20;
-  color: var(--text);
-  border-radius: 12px;
-  padding: 0 12px;
-  font-size: 16px;
-  text-transform: lowercase;
+  display: block;
 }
 .controls button,
 .play-next {
@@ -171,6 +224,21 @@ body {
   opacity: 0.6;
 }
 .hidden { display: none; }
+.hidden-input {
+  position: fixed;
+  left: -2000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  font-size: 16px;
+  pointer-events: none;
+  outline: none;
+}
 
 @media (max-width: 390px) {
   .app {
@@ -182,10 +250,17 @@ body {
     font-size: 14px;
   }
   .board {
-    gap: 3px;
+    max-width: 100%;
   }
-  .tile {
-    font-size: clamp(1.7rem, 10vw, 2.3rem);
+  .board-row {
+    margin-bottom: 4px;
+  }
+  .board-row > .tile {
+    margin-right: 4px;
+    border-radius: 3px;
+  }
+  .tile-inner {
+    font-size: 1.25rem;
   }
   .result {
     margin-top: 18px;

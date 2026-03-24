@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
 from random import Random
 from zoneinfo import ZoneInfo
@@ -10,8 +10,10 @@ from app import db
 from app.config import DB_PATH, DAILY_JSON_PATH, DAILY_NO_REPEAT_DAYS, WORDS_PATH
 from app.words import ensure_answers, load_word_lists
 
-
-GAME_TZ = ZoneInfo("Europe/Moscow")
+try:
+    GAME_TZ = ZoneInfo("Europe/Moscow")
+except Exception:  # noqa: BLE001 — нет системных TZ; после pip install tzdata заработает Москва
+    GAME_TZ = dt_timezone.utc
 
 
 def today_game_date() -> date:

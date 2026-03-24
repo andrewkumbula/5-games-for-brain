@@ -81,6 +81,21 @@ python -m tools.dict build --out json --nouns-only --gram-case nomn
 python -m tools.dict validate
 ```
 
+Аудит качества слов (автотест по критериям морфологии):
+```bash
+python -m tools.dict quality --source json --words-path words.json
+```
+
+С учетом ручных исключений (whitelist):
+```bash
+python -m tools.dict quality --source json --words-path words.json --keep-path docs/manual_keep_words.txt
+```
+
+Применить очистку автоматически:
+```bash
+python -m tools.dict quality --source json --words-path words.json --apply
+```
+
 Разница `allowed`/`answers`:
 - `allowed` — все допустимые вводы
 - `answers` — слова для загадок (подмножество `allowed`)

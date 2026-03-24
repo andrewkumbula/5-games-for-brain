@@ -1,10 +1,13 @@
 import asyncio
 import contextlib
+import logging
 
 from app.bot import create_bot
 from app.config import DB_PATH
 from app.daily_sync import sync_public_daily_word_from_db
 from app.db import init_db
+
+log = logging.getLogger(__name__)
 
 
 async def hourly_daily_refresh() -> None:
@@ -16,8 +19,12 @@ async def hourly_daily_refresh() -> None:
 
 
 async def main() -> None:
+    logging.basicConfig(level=logging.INFO)
     init_db(DB_PATH)
-    sync_public_daily_word_from_db()
+    try:
+        sync_public_daily_word_from_db()
+    except Exception:
+        log.exception("sync_public_daily_word_from_db при старте — бот продолжит без daily.json")
     asyncio.create_task(hourly_daily_refresh())
     bot, dispatcher = create_bot()
     await dispatcher.start_polling(bot)

@@ -3,3 +3,8 @@
 __pycache__/
 .pytest_cache/
 webapp/daily.json
+.DS_Store
+.tmp_video_frames/
+.tmp_video_frames_a/
+.tmp_video_frames_b/
+*.mp4

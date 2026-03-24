@@ -19,6 +19,17 @@ from app.text import normalize_word, is_valid_word
 from app.words import load_word_lists, check_dictionary, ensure_answers
 
 
+def _is_start_command_text(text: str | None) -> bool:
+    """Текст вида /start или /start@bot — если Command() не сработал, обработаем здесь."""
+    if not text:
+        return False
+    part = text.strip().split(maxsplit=1)[0]
+    if not part.startswith("/"):
+        return False
+    cmd = part[1:].split("@", 1)[0].casefold()
+    return cmd == "start"
+
+
 def instruction_text() -> str:
     attempts_line = (
         f"Попыток: {MAX_ATTEMPTS}."
@@ -71,7 +82,7 @@ def build_router() -> Router:
         if finished and not won and answer:
             lines.append("")
             lines.append(f"Слово дня: {answer.upper()}")
-        el        if finished and won:
+        elif finished and won:
             lines.append("")
             lines.append("Слово дня отгадано. Новое слово — с полуночи по Москве.")
             lines.append(f"Попыток использовано: {attempts_used} / 6")
@@ -114,13 +125,18 @@ def build_router() -> Router:
         with db.get_conn(DB_PATH) as conn:
             db.set_history_message_id(conn, game_id, sent.message_id)
 
-    @router.message(Command("start"))
-    async def start(message: Message) -> None:
+    async def handle_start(message: Message) -> None:
         if WEBAPP_URL:
-            await message.answer(
-                "Открой мини-приложение и играй в «5 букв».",
-                reply_markup=build_open_webapp_keyboard(),
-            )
+            try:
+                await message.answer(
+                    "Открой мини-приложение и играй в «5 букв».",
+                    reply_markup=build_open_webapp_keyboard(),
+                )
+            except TelegramBadRequest:
+                await message.answer(
+                    "Открой мини-приложение по ссылке (если кнопка не появилась):\n"
+                    + WEBAPP_URL,
+                )
             return
         if not BOT_TOKEN:
             await message.answer("Токен не задан. Укажи BOT_TOKEN в окружении.")
@@ -146,6 +162,10 @@ def build_router() -> Router:
             db.create_game(conn, user_id, today)
             game = db.get_game(conn, user_id, today)
         await upsert_history_message(message, int(game["id"]), game, None)
+
+    @router.message(Command("start"))
+    async def start(message: Message) -> None:
+        await handle_start(message)
 
     @router.message(Command("help"))
     async def help_command(message: Message) -> None:
@@ -250,6 +270,9 @@ def build_router() -> Router:
     @router.message(F.text)
     async def guess(message: Message) -> None:
         if not message.text:
+            return
+        if _is_start_command_text(message.text):
+            await handle_start(message)
             return
         if words_missing:
             await message.answer(
