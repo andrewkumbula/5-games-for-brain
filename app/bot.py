@@ -1,7 +1,5 @@
 import time
 from datetime import date
-from random import Random
-
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
@@ -9,6 +7,7 @@ from aiogram.exceptions import TelegramBadRequest
 
 from app import db
 from app.config import BOT_TOKEN, DB_PATH, WORDS_PATH, STRICT_DICTIONARY, MAX_ATTEMPTS, WEBAPP_URL
+from app.daily_sync import day_number, ensure_today_word, today_game_date
 from app.game import evaluate_guess, encode_result, render_colored_guess
 from app.keyboard import (
     build_keyboard,
@@ -33,18 +32,6 @@ def instruction_text() -> str:
         "- 🟩 буква на месте, 🟨 есть в слове, ⬛ нет в слове.\n"
         "Команды: /start, /help, /stats, /giveup, /restart"
     )
-
-
-def pick_daily_word(words: list[str], game_date: date) -> str:
-    seed = int(game_date.strftime("%Y%m%d"))
-    rng = Random(seed)
-    return rng.choice(words)
-
-
-def day_number(game_date: date) -> int:
-    # Wordle-like daily index for stable headline.
-    base_date = date(2021, 6, 19)
-    return (game_date - base_date).days + 1
 
 
 def build_router() -> Router:
@@ -84,8 +71,9 @@ def build_router() -> Router:
         if finished and not won and answer:
             lines.append("")
             lines.append(f"Слово дня: {answer.upper()}")
-        elif finished and won:
+        el        if finished and won:
             lines.append("")
+            lines.append("Слово дня отгадано. Новое слово — с полуночи по Москве.")
             lines.append(f"Попыток использовано: {attempts_used} / 6")
         else:
             lines.append("")
@@ -101,8 +89,9 @@ def build_router() -> Router:
         with db.get_conn(DB_PATH) as conn:
             attempts_rows = db.get_attempts(conn, game_id)
         attempts = [(row["word"], row["result"]) for row in attempts_rows]
+        game_date = date.fromisoformat(str(game["game_date"]))
         text = build_history_text(
-            game_date=date.today(),
+            game_date=game_date,
             attempts=attempts,
             attempts_used=game["attempts_used"],
             won=bool(game["won"]),
@@ -149,7 +138,7 @@ def build_router() -> Router:
                 telegram_id=message.from_user.id,
                 username=message.from_user.username,
             )
-            today = date.today()
+            today = today_game_date()
             game = db.get_game(conn, user_id, today)
             if game:
                 await upsert_history_message(message, int(game["id"]), game, None)
@@ -188,7 +177,7 @@ def build_router() -> Router:
                 telegram_id=message.from_user.id,
                 username=message.from_user.username,
             )
-            today = date.today()
+            today = today_game_date()
             db.delete_game(conn, user_id, today)
             db.create_game(conn, user_id, today)
             game = db.get_game(conn, user_id, today)
@@ -202,7 +191,7 @@ def build_router() -> Router:
                 reply_markup=build_keyboard(),
             )
             return
-        today = date.today()
+        today = today_game_date()
         with db.get_conn(DB_PATH) as conn:
             user_id = db.get_or_create_user(
                 conn,
@@ -218,10 +207,7 @@ def build_router() -> Router:
                 return
             game_id = int(game["id"])
 
-            daily = db.get_daily_word(conn, today)
-            if not daily:
-                daily = pick_daily_word(answers, today)
-                db.set_daily_word(conn, today, daily)
+            daily = ensure_today_word(conn, answers, today)
 
             db.finish_game(conn, game_id, False)
             game = db.get_game(conn, user_id, today)
@@ -301,7 +287,7 @@ def build_router() -> Router:
             )
             return
 
-        today = date.today()
+        today = today_game_date()
         with db.get_conn(DB_PATH) as conn:
             user_id = db.get_or_create_user(
                 conn,
@@ -316,21 +302,18 @@ def build_router() -> Router:
 
             if game["finished"]:
                 await message.answer(
-                    "Сегодняшняя игра завершена. Приходи завтра.",
+                    "Слово дня на сегодня уже сыграно. Новое слово — с полуночи по Москве.",
                     reply_markup=build_keyboard(),
                 )
                 return
             if MAX_ATTEMPTS > 0 and game["attempts_used"] >= MAX_ATTEMPTS:
                 await message.answer(
-                    "Попытки закончились. Приходи завтра.",
+                    "Попытки на сегодня закончились. Новое слово — с полуночи по Москве.",
                     reply_markup=build_keyboard(),
                 )
                 return
 
-            daily = db.get_daily_word(conn, today)
-            if not daily:
-                daily = pick_daily_word(answers, today)
-                db.set_daily_word(conn, today, daily)
+            daily = ensure_today_word(conn, answers, today)
 
             result = evaluate_guess(daily, guess_word)
             encoded = encode_result(result)

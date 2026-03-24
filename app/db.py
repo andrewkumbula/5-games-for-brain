@@ -83,6 +83,21 @@ def set_daily_word(conn: sqlite3.Connection, game_date: date, word: str) -> None
     )
 
 
+def get_recent_daily_words(conn: sqlite3.Connection, before_date: date, limit: int) -> list[str]:
+    if limit <= 0:
+        return []
+    rows = conn.execute(
+        """
+        SELECT word FROM daily_word
+        WHERE game_date < ?
+        ORDER BY game_date DESC
+        LIMIT ?
+        """,
+        (before_date.isoformat(), limit),
+    ).fetchall()
+    return [str(r["word"]) for r in rows]
+
+
 def delete_daily_word(conn: sqlite3.Connection, game_date: date) -> None:
     conn.execute(
         "DELETE FROM daily_word WHERE game_date = ?",

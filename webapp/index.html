@@ -8,6 +8,7 @@
 </head>
 <body>
   <main class="app">
+    <input id="hiddenInput" class="hidden-input" maxlength="5" autocomplete="off" autocapitalize="none" />
     <div class="badge" id="dayBadge">СЛОВО ДНЯ №1</div>
 
     <section class="board" id="board"></section>
@@ -20,12 +21,9 @@
     <section class="status" id="status"></section>
 
     <div class="controls" id="controlsBlock">
-      <input id="guessInput" maxlength="5" placeholder="Введите слово" autocomplete="off" />
       <button id="guessBtn">Проверить</button>
     </div>
     <section class="keyboard" id="keyboard"></section>
-
-    <button class="play-next hidden" id="playNextBtn">ИГРАТЬ ДАЛЬШЕ</button>
   </main>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>

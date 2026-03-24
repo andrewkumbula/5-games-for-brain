@@ -1,6 +1,6 @@
 const ATTEMPTS = 6;
 const WORD_LEN = 5;
-const STORAGE_KEY = "fiveletters:webapp:v1";
+const STORAGE_KEY = "fiveletters:webapp:v2";
 const DAY0 = new Date("2021-06-19T00:00:00Z");
 const FALLBACK_WORDS = ["галка", "балка", "пурга", "маска", "книга", "ведро", "камин"];
 
@@ -14,7 +14,6 @@ const controlsBlockEl = document.getElementById("controlsBlock");
 const keyboardEl = document.getElementById("keyboard");
 const hiddenInputEl = document.getElementById("hiddenInput");
 const guessBtn = document.getElementById("guessBtn");
-const playNextBtn = document.getElementById("playNextBtn");
 const KEY_ROWS = [
   ["й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"],
   ["ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"],
@@ -41,6 +40,8 @@ const REVEAL_PROFILE = "normal";
 let words = [...FALLBACK_WORDS];
 let allowedWords = new Set(words);
 let answer = "";
+/** @type {{ game_date?: string, day_number?: number, word?: string, next_word_at?: string } | null} */
+let dailyMeta = null;
 let state = null;
 let isRevealing = false;
 let draftGuess = "";
@@ -131,25 +132,23 @@ function render() {
   if (state.finished) {
     guessBtn.disabled = true;
     controlsBlockEl.classList.add("hidden");
-    playNextBtn.classList.remove("hidden");
-    const left = secondsUntilTomorrow();
+    const left = secondsUntilNextWord();
     if (state.won) {
       resultBlockEl.classList.remove("lose");
       resultBlockEl.classList.add("win");
-      resultTitleEl.textContent = "Вы отгадали слово дня! Хотите продолжить отгадывать слова?";
-      resultSubtitleEl.textContent = `Новое слово дня через: ${formatLeft(left)}`;
+      resultTitleEl.textContent = "Слово дня отгадано! До нового слова:";
+      resultSubtitleEl.textContent = formatCountdown(left);
     } else {
       resultBlockEl.classList.remove("win");
       resultBlockEl.classList.add("lose");
-      resultTitleEl.textContent = `Вы не угадали. Слово дня: ${answer.toUpperCase()}`;
-      resultSubtitleEl.textContent = `Новое слово дня через: ${formatLeft(left)}`;
+      resultTitleEl.textContent = `Слово дня не отгадано. Ответ: ${answer.toUpperCase()}`;
+      resultSubtitleEl.textContent = `Новое слово через: ${formatCountdown(left)}`;
     }
     resultBlockEl.classList.remove("hidden");
     statusEl.textContent = "";
   } else {
     guessBtn.disabled = false;
     controlsBlockEl.classList.remove("hidden");
-    playNextBtn.classList.add("hidden");
     resultBlockEl.classList.remove("win", "lose");
     resultBlockEl.classList.add("hidden");
     resultTitleEl.textContent = "";
@@ -211,38 +210,68 @@ async function revealRow(rowIndex, marks) {
   save();
 }
 
-function secondsUntilTomorrow() {
+function secondsUntilNextWord() {
+  if (dailyMeta && dailyMeta.next_word_at) {
+    const end = new Date(dailyMeta.next_word_at).getTime();
+    return Math.max(0, Math.floor((end - Date.now()) / 1000));
+  }
   const now = new Date();
   const tomorrow = new Date(now);
   tomorrow.setHours(24, 0, 0, 0);
-  return Math.floor((tomorrow - now) / 1000);
+  return Math.max(0, Math.floor((tomorrow - now) / 1000));
 }
 
-function formatLeft(total) {
+function formatCountdown(total) {
   const h = String(Math.floor(total / 3600)).padStart(2, "0");
   const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
   const s = String(total % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
 
-function setupState(forceNext = false) {
-  draftGuess = "";
-  const saved = load();
-  let day = dayNumber();
-  if (forceNext) {
-    if (saved && typeof saved.day === "number") {
-      day = saved.day + 1;
-    } else {
-      day = dayNumber() + 1;
+async function loadDailyMeta() {
+  const candidates = ["./daily.json", "../daily.json", "/daily.json"];
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+      const data = await response.json();
+      if (data && typeof data.word === "string" && typeof data.game_date === "string") {
+        return data;
+      }
+    } catch {
+      // try next
     }
   }
-  dayBadgeEl.textContent = `СЛОВО ДНЯ №${day}`;
-  answer = pickWord(words, day);
+  return null;
+}
 
-  if (saved && saved.day === day) {
+function setupState() {
+  draftGuess = "";
+  const gameDate = dailyMeta?.game_date || new Date().toISOString().slice(0, 10);
+  const dayNum =
+    typeof dailyMeta?.day_number === "number" ? dailyMeta.day_number : dayNumber();
+  dayBadgeEl.textContent = `СЛОВО ДНЯ №${dayNum}`;
+
+  if (dailyMeta?.word) {
+    answer = normalize(dailyMeta.word);
+  } else if (!answer) {
+    answer = pickWord(words, dayNum);
+  }
+
+  const saved = load();
+  if (saved && saved.gameDate === gameDate) {
     state = saved;
   } else {
-    state = { day, guesses: [], results: [], finished: false, won: false };
+    state = {
+      gameDate,
+      dayNumber: dayNum,
+      guesses: [],
+      results: [],
+      finished: false,
+      won: false,
+    };
     save();
   }
   render();
@@ -450,18 +479,25 @@ if (hiddenInputEl) {
     }
   });
 }
-playNextBtn.addEventListener("click", () => {
-  draftGuess = "";
-  setupState(true);
-});
-
 if (window.Telegram?.WebApp) {
   window.Telegram.WebApp.ready();
   window.Telegram.WebApp.expand();
 }
 
-applyRevealProfile();
-loadWords().then(() => setupState());
+async function boot() {
+  applyRevealProfile();
+  await loadWords();
+  dailyMeta = await loadDailyMeta();
+  if (dailyMeta?.word) {
+    answer = normalize(dailyMeta.word);
+  } else {
+    answer = pickWord(words, dayNumber());
+    statusEl.textContent = "Нет daily.json — локальное слово. Запустите бота на сервере.";
+  }
+  setupState();
+}
+
+void boot();
 setInterval(() => {
   if (state?.finished) render();
 }, 1000);

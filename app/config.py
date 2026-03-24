@@ -27,3 +27,7 @@ STRICT_DICTIONARY = os.getenv("STRICT_DICTIONARY", "1") == "1"
 MAX_ATTEMPTS = int(os.getenv("MAX_ATTEMPTS", "6"))
 USE_KEYBOARD = os.getenv("USE_KEYBOARD", "1") == "1"
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
+DAILY_JSON_PATH = Path(
+    os.getenv("DAILY_JSON_PATH", str(BASE_DIR / "webapp" / "daily.json"))
+).resolve()
+DAILY_NO_REPEAT_DAYS = int(os.getenv("DAILY_NO_REPEAT_DAYS", "400"))
