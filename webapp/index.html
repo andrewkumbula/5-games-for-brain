@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>5 букв</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app">
+    <div class="badge" id="dayBadge">СЛОВО ДНЯ №1</div>
+
+    <section class="board" id="board"></section>
+
+    <section class="result hidden" id="resultBlock">
+      <p class="result-title" id="resultTitle"></p>
+      <p class="result-subtitle" id="resultSubtitle"></p>
+    </section>
+
+    <section class="status" id="status"></section>
+
+    <div class="controls" id="controlsBlock">
+      <input id="guessInput" maxlength="5" placeholder="Введите слово" autocomplete="off" />
+      <button id="guessBtn">Проверить</button>
+    </div>
+    <section class="keyboard" id="keyboard"></section>
+
+    <button class="play-next hidden" id="playNextBtn">ИГРАТЬ ДАЛЬШЕ</button>
+  </main>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
