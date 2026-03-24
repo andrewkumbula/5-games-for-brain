@@ -20,6 +20,22 @@ const KEY_ROWS = [
   ["enter", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "backspace"],
 ];
 const COLOR_PRIORITY = { black: 1, yellow: 2, green: 3 };
+const REVEAL_PROFILES = {
+  normal: {
+    revealTileMs: 280,
+    tileTransformMs: 280,
+    tileColorMs: 220,
+    tileFlipMs: 280,
+  },
+  slow: {
+    revealTileMs: 420,
+    tileTransformMs: 360,
+    tileColorMs: 300,
+    tileFlipMs: 420,
+  },
+};
+// Change only this value: "normal" or "slow".
+const REVEAL_PROFILE = "normal";
 
 let words = [...FALLBACK_WORDS];
 let allowedWords = new Set(words);
@@ -27,8 +43,16 @@ let answer = "";
 let state = null;
 let isRevealing = false;
 let draftGuess = "";
-const REVEAL_STEP_MS = 190;
-const FLIP_RESET_MS = 380;
+const activeRevealProfile = REVEAL_PROFILES[REVEAL_PROFILE] || REVEAL_PROFILES.normal;
+const REVEAL_TILE_MS = activeRevealProfile.revealTileMs;
+const REVEAL_HALF_MS = Math.floor(REVEAL_TILE_MS / 2);
+
+function applyRevealProfile() {
+  const root = document.documentElement;
+  root.style.setProperty("--tile-transform-ms", `${activeRevealProfile.tileTransformMs}ms`);
+  root.style.setProperty("--tile-color-ms", `${activeRevealProfile.tileColorMs}ms`);
+  root.style.setProperty("--tile-flip-ms", `${activeRevealProfile.tileFlipMs}ms`);
+}
 
 function dayNumber(now = new Date()) {
   return Math.floor((now - DAY0) / 86400000) + 1;
@@ -149,16 +173,26 @@ function haptic(kind) {
 async function revealRow(rowIndex, marks) {
   isRevealing = true;
   guessBtn.disabled = true;
+  // Keep result row neutral before reveal; colors appear per tile.
+  state.results[rowIndex] = Array(WORD_LEN).fill("");
+  render();
   for (let col = 0; col < WORD_LEN; col += 1) {
-    const tile = getTileAt(rowIndex, col);
+    let tile = getTileAt(rowIndex, col);
     if (!tile) {
       continue;
     }
     tile.classList.add("flip");
-    await new Promise((resolve) => setTimeout(resolve, REVEAL_STEP_MS));
-    tile.classList.add(marks[col]);
+    await new Promise((resolve) => setTimeout(resolve, REVEAL_HALF_MS));
+    const mark = marks[col];
+    state.results[rowIndex][col] = mark;
+    tile.classList.add(mark);
+    renderKeyboard();
     haptic("light");
-    setTimeout(() => tile.classList.remove("flip"), FLIP_RESET_MS);
+    await new Promise((resolve) => setTimeout(resolve, REVEAL_HALF_MS));
+    tile = getTileAt(rowIndex, col);
+    if (tile) {
+      tile.classList.remove("flip");
+    }
   }
   isRevealing = false;
   if (!state.finished) {
@@ -166,6 +200,7 @@ async function revealRow(rowIndex, marks) {
   } else {
     haptic(state.won ? "success" : "error");
   }
+  save();
 }
 
 function secondsUntilTomorrow() {
@@ -222,10 +257,9 @@ async function submitGuess() {
   const rowIndex = state.guesses.length;
   draftGuess = "";
   state.guesses.push(guess);
-  state.results.push(marks);
+  state.results.push(Array(WORD_LEN).fill(""));
   state.won = guess === answer;
   state.finished = state.won || state.guesses.length >= ATTEMPTS;
-  save();
   render();
   await revealRow(rowIndex, marks);
   render();
@@ -239,6 +273,9 @@ function buildKeyboardState() {
     for (let col = 0; col < WORD_LEN; col += 1) {
       const letter = guess[col];
       const nextColor = marks[col];
+      if (!nextColor) {
+        continue;
+      }
       const currentColor = letters[letter];
       if (!currentColor || COLOR_PRIORITY[nextColor] > COLOR_PRIORITY[currentColor]) {
         letters[letter] = nextColor;
@@ -362,6 +399,7 @@ if (window.Telegram?.WebApp) {
   window.Telegram.WebApp.expand();
 }
 
+applyRevealProfile();
 loadWords().then(() => setupState());
 setInterval(() => {
   if (state?.finished) render();
