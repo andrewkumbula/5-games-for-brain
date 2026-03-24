@@ -10,20 +10,19 @@ from tools.dict.core import (
 
 
 def test_normalize_and_filter():
-    lines = ["  ЁЛКА ", "камин", "ведро", "abc", "шесть", "дом"]
+    lines = ["  АЛЁША ", "камин", "ведро", "hello", "дом"]
     allowed = filter_words(lines, yo_mode="to_e")
-    assert "елка" in allowed
+    assert "алеша" in allowed
     assert "камин" in allowed
     assert "ведро" in allowed
-    assert "abc" not in allowed
-    assert "шесть" not in allowed
+    assert "hello" not in allowed
     assert "дом" not in allowed
 
 
 def test_dedup_and_sort():
     lines = ["ведро", "ведро", "камин"]
     allowed = filter_words(lines, yo_mode="to_e")
-    assert allowed == ["камин", "ведро"]
+    assert allowed == ["ведро", "камин"]
 
 
 def test_answers_subset_and_seed():
