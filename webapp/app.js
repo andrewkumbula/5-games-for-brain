@@ -369,8 +369,20 @@ function onKeyboardToken(token) {
   render();
 }
 
+/** На touch (Telegram Mini App и т.п.) не фокусируем input — иначе всплывает системная клавиатура. Физическая клавиатура всё равно ловится через document.keydown. */
+function wantsHiddenInputFocus() {
+  try {
+    return window.matchMedia("(pointer: fine)").matches;
+  } catch {
+    return true;
+  }
+}
+
 function tryFocusHiddenInput() {
   if (!hiddenInputEl || state?.finished || isRevealing) {
+    return;
+  }
+  if (!wantsHiddenInputFocus()) {
     return;
   }
   hiddenInputEl.focus({ preventScroll: true });
