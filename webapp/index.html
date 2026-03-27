@@ -2,31 +2,145 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>5 букв</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+  <title>Игры дня</title>
+  <!-- Критично при отсутствии/кэше styles.css: меню не должно оказаться под игрой -->
+  <style>
+    .hidden {
+      display: none !important;
+    }
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      min-height: var(--tg-viewport-stable-height, 100dvh);
+    }
+  </style>
+  <link rel="stylesheet" href="./styles.css?v=3" />
 </head>
 <body>
-  <main class="app">
-    <input id="hiddenInput" class="hidden-input" maxlength="5" autocomplete="off" autocapitalize="none" />
-    <div class="badge" id="dayBadge">СЛОВО ДНЯ №1</div>
+  <section id="viewHub" class="hub" aria-label="Выбор игры">
+    <header class="hub-header">
+      <h1 class="hub-title">Игры дня</h1>
+      <p class="hub-subtitle">У каждой игры — одно задание в сутки</p>
+    </header>
+    <ul class="hub-list">
+      <li>
+        <button type="button" class="hub-card hub-card--active" data-game="wordle">
+          <span class="hub-card-icon" aria-hidden="true">▦</span>
+          <span class="hub-card-text">
+            <span class="hub-card-name">5 букв</span>
+            <span class="hub-card-desc">Угадай слово из пяти букв</span>
+          </span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="hub-card hub-card--active" data-game="associations">
+          <span class="hub-card-icon" aria-hidden="true">◎</span>
+          <span class="hub-card-text">
+            <span class="hub-card-name">Ассоциации</span>
+            <span class="hub-card-desc">Четыре группы по четыре слова</span>
+          </span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="hub-card hub-card--soon" data-game="soon">
+          <span class="hub-card-icon" aria-hidden="true">◇</span>
+          <span class="hub-card-text">
+            <span class="hub-card-name">Игра 3</span>
+            <span class="hub-card-desc">В разработке</span>
+          </span>
+          <span class="hub-badge">Скоро</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="hub-card hub-card--soon" data-game="soon">
+          <span class="hub-card-icon" aria-hidden="true">◇</span>
+          <span class="hub-card-text">
+            <span class="hub-card-name">Игра 4</span>
+            <span class="hub-card-desc">В разработке</span>
+          </span>
+          <span class="hub-badge">Скоро</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="hub-card hub-card--soon" data-game="soon">
+          <span class="hub-card-icon" aria-hidden="true">◇</span>
+          <span class="hub-card-text">
+            <span class="hub-card-name">Игра 5</span>
+            <span class="hub-card-desc">В разработке</span>
+          </span>
+          <span class="hub-badge">Скоро</span>
+        </button>
+      </li>
+    </ul>
+  </section>
 
-    <section class="board" id="board"></section>
+  <div id="viewWordle" class="game-view hidden">
+    <header class="game-toolbar">
+      <button type="button" class="game-toolbar-back" id="backToMenu" aria-label="В меню игр">
+        ← Меню
+      </button>
+      <span class="game-toolbar-title">5 букв</span>
+    </header>
+    <main class="app">
+      <input
+        id="hiddenInput"
+        class="hidden-input"
+        maxlength="5"
+        autocomplete="off"
+        autocapitalize="none"
+        inputmode="none"
+      />
+      <div class="badge" id="dayBadge">СЛОВО ДНЯ №1</div>
 
-    <section class="result hidden" id="resultBlock">
-      <p class="result-title" id="resultTitle"></p>
-      <p class="result-subtitle" id="resultSubtitle"></p>
-    </section>
+      <section class="board" id="board"></section>
 
-    <section class="status" id="status"></section>
+      <section class="result hidden" id="resultBlock">
+        <p class="result-title" id="resultTitle"></p>
+        <p class="result-subtitle" id="resultSubtitle"></p>
+      </section>
 
-    <div class="controls" id="controlsBlock">
-      <button id="guessBtn">Проверить</button>
-    </div>
-    <section class="keyboard" id="keyboard"></section>
-  </main>
+      <section class="status" id="status"></section>
+
+      <div class="controls" id="controlsBlock">
+        <button id="guessBtn">Проверить</button>
+      </div>
+      <section class="keyboard" id="keyboard"></section>
+    </main>
+  </div>
+
+  <div id="viewAssociations" class="game-view hidden">
+    <header class="game-toolbar">
+      <button type="button" class="game-toolbar-back" id="backFromAssociations" aria-label="В меню игр">
+        ← Меню
+      </button>
+      <span class="game-toolbar-title">Ассоциации</span>
+    </header>
+    <main class="assoc-app">
+      <p class="assoc-debug hidden" id="assocDebugLine" role="status"></p>
+      <p class="assoc-lead" id="assocMistakes">Ошибки: 0/4</p>
+      <p class="assoc-hint" id="assocStatus">Выберите 4 связанных слова и нажмите «Проверить»</p>
+      <section id="assocFound" class="assoc-found" aria-live="polite"></section>
+      <section id="assocGrid" class="assoc-grid" aria-label="Слова"></section>
+      <div class="assoc-actions">
+        <button type="button" class="assoc-btn assoc-btn--secondary" id="assocResetBtn">Сбросить выбор</button>
+        <button type="button" class="assoc-btn assoc-btn--primary" id="assocCheckBtn" disabled>Проверить</button>
+      </div>
+      <div class="assoc-test hidden" id="assocTestControls">
+        <button type="button" class="assoc-btn assoc-btn--secondary assoc-btn--full" id="assocRestartBtn">
+          Начать эту головоломку заново
+        </button>
+      </div>
+    </main>
+  </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./app.js"></script>
+  <script src="./tg-init.js?v=3"></script>
+  <script src="./app.js?v=3"></script>
+  <script src="./associations.js?v=3"></script>
+  <script src="./hub.js?v=3"></script>
 </body>
 </html>
