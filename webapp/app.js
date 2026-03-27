@@ -117,7 +117,19 @@ function load() {
   }
 }
 
+/** В TG WebView fetch иногда «висит» без ответа — иначе boot() не доходит до render(). */
+function fetchWithTimeout(url, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal, cache: "no-store" }).finally(() => {
+    clearTimeout(t);
+  });
+}
+
 function render() {
+  if (!state || !boardEl) {
+    return;
+  }
   boardEl.innerHTML = "";
   const activeRow = state.guesses.length;
   for (let row = 0; row < ATTEMPTS; row += 1) {
@@ -253,10 +265,10 @@ function formatCountdown(total) {
 }
 
 async function loadDailyMeta() {
-  const candidates = ["./daily.json", "../daily.json", "/daily.json"];
+  const candidates = ["./daily.json", "../daily.json", "/daily.json", "/webapp/daily.json"];
   for (const url of candidates) {
     try {
-      const response = await fetch(url, { cache: "no-store" });
+      const response = await fetchWithTimeout(url, 6000);
       if (!response.ok) {
         continue;
       }
@@ -396,6 +408,9 @@ function tryFocusHiddenInput() {
 }
 
 function renderKeyboard() {
+  if (!state || !keyboardEl) {
+    return;
+  }
   keyboardEl.innerHTML = "";
   const states = buildKeyboardState();
   const disabled = state.finished || isRevealing;
@@ -424,10 +439,15 @@ function renderKeyboard() {
 }
 
 async function loadWords() {
-  const candidates = ["./words.json", "../words.json", "/words.json"];
+  const candidates = [
+    "./words.json",
+    "../words.json",
+    "/words.json",
+    "/webapp/words.json",
+  ];
   for (const url of candidates) {
     try {
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url, 8000);
       if (!response.ok) {
         continue;
       }
@@ -528,13 +548,23 @@ if (hiddenInputEl) {
 }
 async function boot() {
   applyRevealProfile();
-  await loadWords();
-  dailyMeta = await loadDailyMeta();
+  try {
+    await loadWords();
+  } catch {
+    allowedWords = new Set(words);
+  }
+  try {
+    dailyMeta = await loadDailyMeta();
+  } catch {
+    dailyMeta = null;
+  }
   if (dailyMeta?.word) {
     answer = normalize(dailyMeta.word);
   } else {
     answer = pickWord(words, dayNumber());
-    statusEl.textContent = "Нет daily.json — локальное слово. Запустите бота на сервере.";
+    if (statusEl) {
+      statusEl.textContent = "Нет daily.json — локальное слово. Запустите бота на сервере.";
+    }
   }
   setupState();
   setTimeout(() => tryFocusHiddenInput(), 0);
