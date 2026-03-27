@@ -398,7 +398,8 @@ body {
 }
 
 .game-view {
-  --game-toolbar-h: 48px;
+  /* Высота шапки игры: отступ как у хаба под TG + строка с кнопкой «назад» */
+  --game-toolbar-h: calc(env(safe-area-inset-top, 0px) + var(--hub-below-tg-header, 64px) + 48px);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -411,21 +412,58 @@ body {
   align-items: center;
   gap: 8px;
   min-height: var(--game-toolbar-h);
-  padding: 8px 12px max(6px, env(safe-area-inset-top, 0px));
+  padding: calc(env(safe-area-inset-top, 0px) + var(--hub-below-tg-header, 64px)) 12px 8px;
   background: rgba(255, 255, 255, 0.07);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  position: sticky;
+  top: 0;
+  z-index: 25;
 }
 
 .game-toolbar-back {
   border: none;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.14);
   color: var(--text);
   font: inherit;
   font-weight: 600;
   font-size: 0.95rem;
-  padding: 8px 6px;
+  padding: 10px 14px;
+  min-height: 44px;
+  border-radius: 999px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.game-bottom-bar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+}
+
+.game-bottom-bar--assoc {
+  margin-top: auto;
+}
+
+.game-bottom-back {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  width: 100%;
+  max-width: 320px;
+  padding: 12px 20px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-view .keyboard {
+  margin-top: auto;
 }
 
 .game-toolbar-title {
@@ -612,5 +650,130 @@ body {
     font-size: 0.62rem;
     padding: 6px 4px;
     min-height: 40px;
+  }
+}
+
+/* Криптограмма */
+.crypto-app {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 10px 12px max(16px, env(safe-area-inset-bottom, 0px));
+  min-height: calc(100dvh - var(--game-toolbar-h));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.game-view .crypto-app {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.crypto-field {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 8px 10px;
+  flex-shrink: 0;
+  padding: 6px 0;
+}
+
+.crypto-word {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+}
+
+.crypto-cell {
+  width: clamp(28px, 7.5vmin, 36px);
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.crypto-cell-char {
+  font-size: clamp(0.85rem, 3.8vmin, 1.05rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.crypto-cell-num {
+  font-size: clamp(0.55rem, 2.4vmin, 0.68rem);
+  color: var(--muted);
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.crypto-cell--hint {
+  background: rgba(245, 200, 74, 0.12);
+  border-color: rgba(245, 200, 74, 0.4);
+}
+
+.crypto-cell--focus {
+  border-color: rgba(49, 181, 255, 0.75);
+  box-shadow: 0 0 0 2px rgba(49, 181, 255, 0.25);
+}
+
+.crypto-cell:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.crypto-cell.crypto-cell--hint:disabled {
+  opacity: 1;
+}
+
+.crypto-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.crypto-keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 6px 0 4px;
+  flex-shrink: 0;
+}
+
+.crypto-key {
+  min-width: 30px;
+  min-height: 38px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.crypto-key:active {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 360px) {
+  .crypto-actions {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

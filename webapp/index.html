@@ -18,7 +18,7 @@
       min-height: var(--tg-viewport-stable-height, 100dvh);
     }
   </style>
-  <link rel="stylesheet" href="./styles.css?v=4" />
+  <link rel="stylesheet" href="./styles.css?v=6" />
 </head>
 <body>
   <section id="viewHub" class="hub" aria-label="Выбор игры">
@@ -46,13 +46,12 @@
         </button>
       </li>
       <li>
-        <button type="button" class="hub-card hub-card--soon" data-game="soon">
-          <span class="hub-card-icon" aria-hidden="true">◇</span>
+        <button type="button" class="hub-card hub-card--active" data-game="cryptogram">
+          <span class="hub-card-icon" aria-hidden="true">⌗</span>
           <span class="hub-card-text">
-            <span class="hub-card-name">Игра 3</span>
-            <span class="hub-card-desc">В разработке</span>
+            <span class="hub-card-name">Криптограмма</span>
+            <span class="hub-card-desc">Буквы по числам, фраза дня</span>
           </span>
-          <span class="hub-badge">Скоро</span>
         </button>
       </li>
       <li>
@@ -80,7 +79,7 @@
 
   <div id="viewWordle" class="game-view hidden">
     <header class="game-toolbar">
-      <button type="button" class="game-toolbar-back" id="backToMenu" aria-label="В меню игр">
+      <button type="button" class="game-toolbar-back js-back-to-hub" id="backToMenu" aria-label="В меню игр">
         ← Меню
       </button>
       <span class="game-toolbar-title">5 букв</span>
@@ -109,12 +108,15 @@
         <button id="guessBtn">Проверить</button>
       </div>
       <section class="keyboard" id="keyboard"></section>
+      <div class="game-bottom-bar">
+        <button type="button" class="game-bottom-back js-back-to-hub">К меню игр</button>
+      </div>
     </main>
   </div>
 
   <div id="viewAssociations" class="game-view hidden">
     <header class="game-toolbar">
-      <button type="button" class="game-toolbar-back" id="backFromAssociations" aria-label="В меню игр">
+      <button type="button" class="game-toolbar-back js-back-to-hub" id="backFromAssociations" aria-label="В меню игр">
         ← Меню
       </button>
       <span class="game-toolbar-title">Ассоциации</span>
@@ -134,13 +136,62 @@
           Начать эту головоломку заново
         </button>
       </div>
+      <div class="game-bottom-bar game-bottom-bar--assoc">
+        <button type="button" class="game-bottom-back js-back-to-hub">К меню игр</button>
+      </div>
+    </main>
+  </div>
+
+  <div id="viewCryptogram" class="game-view hidden">
+    <header class="game-toolbar">
+      <button type="button" class="game-toolbar-back js-back-to-hub" id="backFromCryptogram" aria-label="В меню игр">
+        ← Меню
+      </button>
+      <span class="game-toolbar-title">Криптограмма</span>
+    </header>
+    <main class="crypto-app">
+      <input
+        id="cryptoHiddenInput"
+        class="hidden-input"
+        type="text"
+        maxlength="8"
+        autocomplete="off"
+        autocapitalize="characters"
+        inputmode="text"
+        lang="ru"
+        aria-label="Ввод буквы"
+      />
+      <p class="assoc-debug hidden" id="cryptoDebugLine" role="status"></p>
+      <p class="assoc-lead" id="cryptoMistakes">Ошибки: 0/3</p>
+      <p class="assoc-hint" id="cryptoStatus">Выберите клетку и букву</p>
+      <section id="cryptoField" class="crypto-field" aria-label="Шифр"></section>
+      <div class="crypto-actions">
+        <button type="button" class="assoc-btn assoc-btn--secondary" id="cryptoPrevBtn" aria-label="Предыдущая клетка">
+          ←
+        </button>
+        <button type="button" class="assoc-btn assoc-btn--secondary" id="cryptoNextBtn" aria-label="Следующая клетка">
+          →
+        </button>
+        <button type="button" class="assoc-btn assoc-btn--secondary" id="cryptoEraseBtn">Стереть</button>
+        <button type="button" class="assoc-btn assoc-btn--primary" id="cryptoCheckBtn">Проверить</button>
+      </div>
+      <section id="cryptoKeyboard" class="crypto-keyboard" aria-label="Буквы"></section>
+      <div class="assoc-test hidden" id="cryptoTestControls">
+        <button type="button" class="assoc-btn assoc-btn--secondary assoc-btn--full" id="cryptoRestartBtn">
+          Начать эту головоломку заново
+        </button>
+      </div>
+      <div class="game-bottom-bar game-bottom-bar--assoc">
+        <button type="button" class="game-bottom-back js-back-to-hub">К меню игр</button>
+      </div>
     </main>
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./tg-init.js?v=4"></script>
-  <script src="./app.js?v=4"></script>
-  <script src="./associations.js?v=4"></script>
-  <script src="./hub.js?v=4"></script>
+  <script src="./tg-init.js?v=6"></script>
+  <script src="./app.js?v=6"></script>
+  <script src="./associations.js?v=6"></script>
+  <script src="./cryptogram.js?v=6"></script>
+  <script src="./hub.js?v=6"></script>
 </body>
 </html>
