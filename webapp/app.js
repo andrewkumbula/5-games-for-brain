@@ -4,6 +4,11 @@ const STORAGE_KEY = "fiveletters:webapp:v2";
 const DAY0 = new Date("2021-06-19T00:00:00Z");
 const FALLBACK_WORDS = ["галка", "балка", "пурга", "маска", "книга", "ведро", "камин"];
 
+function isWordleViewActive() {
+  const el = document.getElementById("viewWordle");
+  return !!(el && !el.classList.contains("hidden"));
+}
+
 const boardEl = document.getElementById("board");
 const statusEl = document.getElementById("status");
 const dayBadgeEl = document.getElementById("dayBadge");
@@ -297,6 +302,7 @@ function setupState() {
 }
 
 async function submitGuess() {
+  if (!isWordleViewActive() || !state) return;
   if (state.finished || isRevealing) return;
   const guess = normalize(draftGuess);
   if (!isValidWord(guess)) {
@@ -348,6 +354,7 @@ function keyLabel(token) {
 }
 
 function onKeyboardToken(token) {
+  if (!isWordleViewActive() || !state) return;
   if (state.finished || isRevealing) return;
   if (token === "enter") {
     void submitGuess();
@@ -379,7 +386,7 @@ function wantsHiddenInputFocus() {
 }
 
 function tryFocusHiddenInput() {
-  if (!hiddenInputEl || state?.finished || isRevealing) {
+  if (!isWordleViewActive() || !hiddenInputEl || state?.finished || isRevealing) {
     return;
   }
   if (!wantsHiddenInputFocus()) {
@@ -450,6 +457,9 @@ guessBtn.addEventListener("click", () => {
   void submitGuess();
 });
 document.addEventListener("keydown", (e) => {
+  if (!isWordleViewActive()) {
+    return;
+  }
   if (state?.finished || isRevealing) {
     return;
   }
@@ -476,10 +486,16 @@ document.addEventListener("keydown", (e) => {
   }
 });
 document.addEventListener("click", () => {
-  tryFocusHiddenInput();
+  if (isWordleViewActive()) {
+    tryFocusHiddenInput();
+  }
 });
 if (hiddenInputEl) {
   hiddenInputEl.addEventListener("beforeinput", (e) => {
+    if (!isWordleViewActive()) {
+      e.preventDefault();
+      return;
+    }
     if (state?.finished || isRevealing) {
       e.preventDefault();
       return;
@@ -510,11 +526,6 @@ if (hiddenInputEl) {
     }
   });
 }
-if (window.Telegram?.WebApp) {
-  window.Telegram.WebApp.ready();
-  window.Telegram.WebApp.expand();
-}
-
 async function boot() {
   applyRevealProfile();
   await loadWords();
@@ -526,10 +537,11 @@ async function boot() {
     statusEl.textContent = "Нет daily.json — локальное слово. Запустите бота на сервере.";
   }
   setupState();
+  setTimeout(() => tryFocusHiddenInput(), 0);
 }
 
-void boot();
+window.startWordle = boot;
+
 setInterval(() => {
-  if (state?.finished) render();
+  if (state?.finished && isWordleViewActive()) render();
 }, 1000);
-setTimeout(() => tryFocusHiddenInput(), 0);
