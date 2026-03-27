@@ -12,6 +12,7 @@ function $(id) {
 function hideGameViews() {
   $("viewWordle")?.classList.add("hidden");
   $("viewAssociations")?.classList.add("hidden");
+  $("viewCryptogram")?.classList.add("hidden");
 }
 
 function stripHashFromUrl() {
@@ -63,6 +64,24 @@ function showAssociations() {
   }
 }
 
+function showCryptogram() {
+  $("viewHub")?.classList.add("hidden");
+  hideGameViews();
+  $("viewCryptogram")?.classList.remove("hidden");
+  document.title = "Криптограмма";
+  try {
+    history.replaceState(null, "", `${location.pathname}${location.search}#cryptogram`);
+  } catch {
+    /* ignore */
+  }
+  localStorage.setItem(HUB_ROUTE_KEY, "cryptogram");
+  if (typeof window.startCryptogram === "function") {
+    window.startCryptogram();
+  }
+}
+
+window.showCryptogram = showCryptogram;
+
 function soonMessage() {
   return "Эта игра в разработке.";
 }
@@ -78,18 +97,24 @@ function onSoonClick() {
 }
 
 function initHub() {
-  $("backToMenu")?.addEventListener("click", showHub);
-  $("backFromAssociations")?.addEventListener("click", showHub);
+  document.querySelectorAll(".js-back-to-hub").forEach((el) => {
+    el.addEventListener("click", showHub);
+  });
+  window.showGamesHub = showHub;
 
   document.querySelectorAll(".hub-card[data-game]").forEach((el) => {
     el.addEventListener("click", () => {
-      const game = el.getAttribute("data-game");
+      const game = (el.getAttribute("data-game") || "").trim();
       if (game === "wordle") {
         showWordle();
         return;
       }
       if (game === "associations") {
         showAssociations();
+        return;
+      }
+      if (game === "cryptogram") {
+        showCryptogram();
         return;
       }
       if (game === "soon") {

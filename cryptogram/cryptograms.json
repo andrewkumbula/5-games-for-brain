@@ -1,0 +1,219 @@
+{
+  "phrases": [
+    {
+      "id": "proverbs_01",
+      "category": "proverbs",
+      "text": "без труда не вытащишь и рыбку из пруда"
+    },
+    {
+      "id": "proverbs_02",
+      "category": "proverbs",
+      "text": "делу время потехе час"
+    },
+    {
+      "id": "proverbs_03",
+      "category": "proverbs",
+      "text": "семь раз отмерь один раз отрежь"
+    },
+    {
+      "id": "proverbs_04",
+      "category": "proverbs",
+      "text": "тише едешь дальше будешь"
+    },
+    {
+      "id": "proverbs_05",
+      "category": "proverbs",
+      "text": "не имей сто рублей а имей сто друзей"
+    },
+    {
+      "id": "proverbs_06",
+      "category": "proverbs",
+      "text": "любишь кататься люби и саночки возить"
+    },
+    {
+      "id": "proverbs_07",
+      "category": "proverbs",
+      "text": "век живи век учись"
+    },
+    {
+      "id": "proverbs_08",
+      "category": "proverbs",
+      "text": "слово не воробей вылетит не поймаешь"
+    },
+    {
+      "id": "proverbs_09",
+      "category": "proverbs",
+      "text": "готовь сани летом а телегу зимой"
+    },
+    {
+      "id": "proverbs_10",
+      "category": "proverbs",
+      "text": "не все то золото что блестит"
+    },
+    {
+      "id": "movies_01",
+      "category": "movies",
+      "text": "я подумаю об этом завтра"
+    },
+    {
+      "id": "movies_02",
+      "category": "movies",
+      "text": "ну ты это заходи если что"
+    },
+    {
+      "id": "movies_03",
+      "category": "movies",
+      "text": "есть такая профессия родину защищать"
+    },
+    {
+      "id": "movies_04",
+      "category": "movies",
+      "text": "восток дело тонкое"
+    },
+    {
+      "id": "movies_05",
+      "category": "movies",
+      "text": "жить хорошо а хорошо жить еще лучше"
+    },
+    {
+      "id": "movies_06",
+      "category": "movies",
+      "text": "кина не будет электричество кончилось"
+    },
+    {
+      "id": "movies_07",
+      "category": "movies",
+      "text": "наши люди в булочную на такси не ездят"
+    },
+    {
+      "id": "movies_08",
+      "category": "movies",
+      "text": "кто ж его посадит он же памятник"
+    },
+    {
+      "id": "books_01",
+      "category": "books",
+      "text": "все счастливые семьи похожи друг на друга"
+    },
+    {
+      "id": "books_02",
+      "category": "books",
+      "text": "каждый несчастлив по своему"
+    },
+    {
+      "id": "books_03",
+      "category": "books",
+      "text": "человек это звучит гордо"
+    },
+    {
+      "id": "books_04",
+      "category": "books",
+      "text": "рукописи не горят"
+    },
+    {
+      "id": "books_05",
+      "category": "books",
+      "text": "счастье нужно всем даром и пусть никто не уйдет обиженным"
+    },
+    {
+      "id": "books_06",
+      "category": "books",
+      "text": "мы в ответе за тех кого приручили"
+    },
+    {
+      "id": "books_07",
+      "category": "books",
+      "text": "настоящая любовь начинается там где ничего не ждут взамен"
+    },
+    {
+      "id": "books_08",
+      "category": "books",
+      "text": "и опыт сын ошибок трудных"
+    },
+    {
+      "id": "books_09",
+      "category": "books",
+      "text": "о сколько нам открытий чудных"
+    },
+    {
+      "id": "chat_01",
+      "category": "chat",
+      "text": "все будет хорошо"
+    },
+    {
+      "id": "chat_02",
+      "category": "chat",
+      "text": "это только начало"
+    },
+    {
+      "id": "chat_03",
+      "category": "chat",
+      "text": "ты справишься с этим"
+    },
+    {
+      "id": "chat_04",
+      "category": "chat",
+      "text": "главное не останавливаться"
+    },
+    {
+      "id": "chat_05",
+      "category": "chat",
+      "text": "все приходит с опытом"
+    },
+    {
+      "id": "chat_06",
+      "category": "chat",
+      "text": "живи здесь и сейчас"
+    },
+    {
+      "id": "chat_07",
+      "category": "chat",
+      "text": "сначала сложно потом легко"
+    },
+    {
+      "id": "chat_08",
+      "category": "chat",
+      "text": "все зависит только от тебя"
+    },
+    {
+      "id": "extra_01",
+      "category": "extra",
+      "text": "практика делает мастера"
+    },
+    {
+      "id": "extra_02",
+      "category": "extra",
+      "text": "дорогу осилит идущий"
+    },
+    {
+      "id": "extra_03",
+      "category": "extra",
+      "text": "лучше поздно чем никогда"
+    },
+    {
+      "id": "extra_04",
+      "category": "extra",
+      "text": "где тонко там и рвется"
+    },
+    {
+      "id": "extra_05",
+      "category": "extra",
+      "text": "аппетит приходит во время еды"
+    },
+    {
+      "id": "extra_06",
+      "category": "extra",
+      "text": "нет дыма без огня"
+    },
+    {
+      "id": "extra_07",
+      "category": "extra",
+      "text": "держи друзей близко а врагов еще ближе"
+    },
+    {
+      "id": "extra_08",
+      "category": "extra",
+      "text": "истина где то рядом"
+    }
+  ]
+}
