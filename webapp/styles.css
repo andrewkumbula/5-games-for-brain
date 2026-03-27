@@ -400,6 +400,9 @@ body {
 .game-view {
   /* Высота шапки игры: отступ как у хаба под TG + строка с кнопкой «назад» */
   --game-toolbar-h: calc(env(safe-area-inset-top, 0px) + var(--hub-below-tg-header, 64px) + 48px);
+  position: relative;
+  /* Выше .hub (z-index: 2), иначе при сбое слоя меню перекрывает игру */
+  z-index: 3;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
