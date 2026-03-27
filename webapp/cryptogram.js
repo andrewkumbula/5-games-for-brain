@@ -32,18 +32,23 @@ function todayIsoUtc() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Календарный день в Europe/Moscow (игровой день по ТЗ). */
+/** Календарный день в Europe/Moscow (игровой день по ТЗ). format() в Safari иногда даёт не ISO — берём parts. */
 function moscowDateIso() {
   try {
-    return new Intl.DateTimeFormat("en-CA", {
+    const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Europe/Moscow",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-    }).format(new Date());
+    }).formatToParts(new Date());
+    const y = parts.find((p) => p.type === "year")?.value;
+    const m = parts.find((p) => p.type === "month")?.value;
+    const d = parts.find((p) => p.type === "day")?.value;
+    if (y && m && d) return `${y}-${m}-${d}`;
   } catch {
-    return todayIsoUtc();
+    /* ignore */
   }
+  return todayIsoUtc();
 }
 
 function resolvePlayDate() {
@@ -270,7 +275,6 @@ function haptic(kind) {
 
 const cryptoLeadEl = $("cryptoMistakes");
 const cryptoStatusEl = $("cryptoStatus");
-const cryptoFieldEl = $("cryptoField");
 const cryptoKeyboardEl = $("cryptoKeyboard");
 const cryptoCheckBtn = $("cryptoCheckBtn");
 const cryptoEraseBtn = $("cryptoEraseBtn");
@@ -462,7 +466,8 @@ function updateCryptoDebugUi(playDate) {
 }
 
 function renderCrypto() {
-  if (!cryptoPuzzle || !cryptoState || !cryptoFieldEl) return;
+  const fieldEl = document.getElementById("cryptoField");
+  if (!cryptoPuzzle || !cryptoState || !fieldEl) return;
 
   if (cryptoLeadEl) {
     cryptoLeadEl.textContent = `Ошибки: ${cryptoState.mistakes}/${MAX_MISTAKES} · ${formatRuDate(cryptoState.gameDate)}`;
@@ -477,58 +482,66 @@ function renderCrypto() {
   }
 
   const focusLi = currentFocusLi();
-  cryptoFieldEl.innerHTML = "";
+  fieldEl.innerHTML = "";
 
-  const words = cryptoPuzzle.text.split(" ");
-  let letterOffset = 0;
-  for (let wi = 0; wi < words.length; wi += 1) {
-    const word = words[wi];
-    const wordEl = document.createElement("div");
-    wordEl.className = "crypto-word";
-    for (let ci = 0; ci < word.length; ci += 1) {
-      const li = letterOffset + ci;
-      const ch = cryptoPuzzle.letters[li];
-      const code = cryptoPuzzle.letterToCode[ch];
-      const isHint = cryptoPuzzle.hints.has(li);
-      const guess = cryptoState.guessesByCode[String(code)] || "";
-      const display = isHint ? ch : guess || "";
-      const editable = !isHint && cryptoState.status === "in_progress";
-      const isFocus = editable && li === focusLi;
+  /** Рендер по cells — тот же порядок, что в buildLetterLayout (без split по словам, ломается на iOS/WebKit). */
+  let wordEl = document.createElement("div");
+  wordEl.className = "crypto-word";
 
-      const cell = document.createElement("button");
-      cell.type = "button";
-      cell.className = "crypto-cell" + (isFocus ? " crypto-cell--focus" : "") + (isHint ? " crypto-cell--hint" : "");
-      cell.disabled = cryptoState.status !== "in_progress" || !editable;
-      cell.dataset.li = String(li);
-
-      const charSpan = document.createElement("span");
-      charSpan.className = "crypto-cell-char";
-      charSpan.textContent = display ? display.toUpperCase() : " ";
-      const numSpan = document.createElement("span");
-      numSpan.className = "crypto-cell-num";
-      numSpan.textContent = String(code);
-
-      cell.appendChild(charSpan);
-      cell.appendChild(numSpan);
-
-      if (editable) {
-        cell.addEventListener("click", () => {
-          const ed = editableLetterIndices(cryptoPuzzle);
-          const pos = ed.indexOf(li);
-          if (pos >= 0) {
-            cryptoState.focusEditableIdx = pos;
-            saveProgress(cryptoState);
-            renderCrypto();
-            cryptoHiddenInput?.focus();
-          }
-        });
-      }
-
-      wordEl.appendChild(cell);
+  function flushWord() {
+    if (wordEl.childNodes.length > 0) {
+      fieldEl.appendChild(wordEl);
     }
-    letterOffset += word.length;
-    cryptoFieldEl.appendChild(wordEl);
+    wordEl = document.createElement("div");
+    wordEl.className = "crypto-word";
   }
+
+  for (const c of cryptoPuzzle.cells) {
+    if (c.kind === "space") {
+      flushWord();
+      continue;
+    }
+    const li = c.li;
+    const ch = cryptoPuzzle.letters[li];
+    const code = cryptoPuzzle.letterToCode[ch];
+    const isHint = cryptoPuzzle.hints.has(li);
+    const guess = cryptoState.guessesByCode[String(code)] || "";
+    const display = isHint ? ch : guess || "";
+    const editable = !isHint && cryptoState.status === "in_progress";
+    const isFocus = editable && li === focusLi;
+
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "crypto-cell" + (isFocus ? " crypto-cell--focus" : "") + (isHint ? " crypto-cell--hint" : "");
+    cell.disabled = cryptoState.status !== "in_progress" || !editable;
+    cell.dataset.li = String(li);
+
+    const charSpan = document.createElement("span");
+    charSpan.className = "crypto-cell-char";
+    charSpan.textContent = display ? display.toUpperCase() : " ";
+    const numSpan = document.createElement("span");
+    numSpan.className = "crypto-cell-num";
+    numSpan.textContent = String(code);
+
+    cell.appendChild(charSpan);
+    cell.appendChild(numSpan);
+
+    if (editable) {
+      cell.addEventListener("click", () => {
+        const ed = editableLetterIndices(cryptoPuzzle);
+        const pos = ed.indexOf(li);
+        if (pos >= 0) {
+          cryptoState.focusEditableIdx = pos;
+          saveProgress(cryptoState);
+          renderCrypto();
+          document.getElementById("cryptoHiddenInput")?.focus();
+        }
+      });
+    }
+
+    wordEl.appendChild(cell);
+  }
+  flushWord();
 
   if (cryptoCheckBtn) cryptoCheckBtn.disabled = cryptoState.status !== "in_progress";
   if (cryptoEraseBtn) cryptoEraseBtn.disabled = cryptoState.status !== "in_progress";
