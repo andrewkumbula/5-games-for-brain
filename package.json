@@ -1,0 +1,11 @@
+{
+  "name": "5-games-for-brain",
+  "private": true,
+  "description": "Мини-приложение «Игры дня»",
+  "scripts": {
+    "test": "node --test tests/syntax.test.mjs tests/hub-menu-order.test.mjs tests/html-structure.test.mjs tests/json-data.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
