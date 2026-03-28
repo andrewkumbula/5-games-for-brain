@@ -82,6 +82,94 @@ function showCryptogram() {
 
 window.showCryptogram = showCryptogram;
 
+
+
+function soonMessage() {
+  return "Эта игра в разработке.";
+}
+
+function onSoonClick() {
+  const tg = window.Telegram?.WebApp;
+  const msg = soonMessage();
+  if (tg?.showAlert) {
+    tg.showAlert(msg);
+    return;
+  }
+  window.alert(msg);
+}
+
+function initHub() {
+  document.querySelectorAll(".js-back-to-hub").forEach((el) => {
+    el.addEventListener("click", showHub);
+  });
+  window.showGamesHub = showHub;
+
+  document.querySelectorAll(".hub-card[data-game]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const game = (el.getAttribute("data-game") || "").trim();
+      if (game === "wordle") {
+        showWordle();
+        return;
+      }
+      if (game === "associations") {
+        showAssociations();
+        return;
+      }
+      if (game === "cryptogram") {
+        showCryptogram();
+        return;
+      }
+      if (game === "soon") {
+        onSoonClick();
+      }
+    });
+  });
+
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.get("menu") === "1") {
+      params.delete("menu");
+      const qs = params.toString();
+      history.replaceState(null, "", `${location.pathname}${qs ? `?${qs}` : ""}`);
+    }
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    window.scrollTo(0, 0);
+  } catch {
+    /* ignore */
+  }
+  showHub();
+}
+
+function expandTelegram() {
+  const w = window.Telegram?.WebApp;
+  if (!w) return;
+  try {
+    w.ready();
+    w.expand();
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (typeof w.requestFullscreen === "function") {
+      w.requestFullscreen();
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+expandTelegram();
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initHub);
+} else {
+  initHub();
+}
+
 /** Криптограмма (встроена в hub.js — один запрос, без отдельного cryptogram.js). */
 /**
  * Криптограмма: фраза дня, буквы заменены числами. Данные: cryptograms.json.
@@ -717,90 +805,3 @@ async function bootCryptogram() {
 }
 
 window.startCryptogram = bootCryptogram;
-
-
-function soonMessage() {
-  return "Эта игра в разработке.";
-}
-
-function onSoonClick() {
-  const tg = window.Telegram?.WebApp;
-  const msg = soonMessage();
-  if (tg?.showAlert) {
-    tg.showAlert(msg);
-    return;
-  }
-  window.alert(msg);
-}
-
-function initHub() {
-  document.querySelectorAll(".js-back-to-hub").forEach((el) => {
-    el.addEventListener("click", showHub);
-  });
-  window.showGamesHub = showHub;
-
-  document.querySelectorAll(".hub-card[data-game]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const game = (el.getAttribute("data-game") || "").trim();
-      if (game === "wordle") {
-        showWordle();
-        return;
-      }
-      if (game === "associations") {
-        showAssociations();
-        return;
-      }
-      if (game === "cryptogram") {
-        showCryptogram();
-        return;
-      }
-      if (game === "soon") {
-        onSoonClick();
-      }
-    });
-  });
-
-  try {
-    const params = new URLSearchParams(location.search);
-    if (params.get("menu") === "1") {
-      params.delete("menu");
-      const qs = params.toString();
-      history.replaceState(null, "", `${location.pathname}${qs ? `?${qs}` : ""}`);
-    }
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    window.scrollTo(0, 0);
-  } catch {
-    /* ignore */
-  }
-  showHub();
-}
-
-function expandTelegram() {
-  const w = window.Telegram?.WebApp;
-  if (!w) return;
-  try {
-    w.ready();
-    w.expand();
-  } catch {
-    /* ignore */
-  }
-  try {
-    if (typeof w.requestFullscreen === "function") {
-      w.requestFullscreen();
-    }
-  } catch {
-    /* ignore */
-  }
-}
-
-expandTelegram();
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initHub);
-} else {
-  initHub();
-}
