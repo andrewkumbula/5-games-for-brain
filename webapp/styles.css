@@ -409,6 +409,14 @@ body {
   min-height: 100dvh;
 }
 
+/*
+  Иначе .game-view перебивает .hidden (одинаковая специфичность, правило ниже в файле):
+  «скрытые» экраны игр остаются display:flex и с z-index:3 перекрывают меню — клики не работают.
+*/
+.game-view.hidden {
+  display: none !important;
+}
+
 .game-toolbar {
   flex-shrink: 0;
   display: flex;

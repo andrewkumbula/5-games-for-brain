@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
   <title>Игры дня</title>
-  <!-- webapp-build: 11 — hub: init до блока криптограммы (не ломать меню) -->
+  <!-- webapp-build: 12 — CSS: .game-view.hidden не перекрывает меню -->
   <!-- Критично при отсутствии/кэше styles.css: меню не должно оказаться под игрой -->
   <style>
     .hidden {
@@ -19,7 +19,7 @@
       min-height: var(--tg-viewport-stable-height, 100dvh);
     }
   </style>
-  <link rel="stylesheet" href="./styles.css?v=11" />
+  <link rel="stylesheet" href="./styles.css?v=12" />
 </head>
 <body>
   <section id="viewHub" class="hub" aria-label="Выбор игры">
