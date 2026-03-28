@@ -304,6 +304,11 @@ body {
   flex-direction: column;
 }
 
+/* .hub { display: flex } иначе перебивает .hidden — тот же конфликт, что у .game-view */
+.hub.hidden {
+  display: none !important;
+}
+
 .hub-header {
   text-align: center;
   margin-bottom: clamp(16px, 4vmin, 24px);
@@ -407,6 +412,10 @@ body {
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+.game-view.hidden {
+  display: none !important;
 }
 
 .game-toolbar {
