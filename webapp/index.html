@@ -3,8 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+  <!-- Без этого при URL …/webapp (без index.html и без /) относительные ./hub.js уходят в /hub.js → 404, меню «мёртвое». -->
+  <script>
+    (function () {
+      var path = location.pathname;
+      if (!path.endsWith("/")) {
+        var last = path.lastIndexOf("/");
+        var seg = path.slice(last + 1);
+        if (seg && !/\.[a-z0-9]+$/i.test(seg)) {
+          path = path + "/";
+        }
+      }
+      var i = path.lastIndexOf("/");
+      var dir = i < 0 ? "/" : path.slice(0, i + 1);
+      if (dir === "/") return;
+      var b = document.createElement("base");
+      b.href = dir;
+      document.head.insertBefore(b, document.currentScript);
+    })();
+  </script>
   <title>Игры дня</title>
-  <!-- webapp-build: 12 — CSS: .game-view.hidden не перекрывает меню -->
+  <!-- webapp-build: 13 — base href + CSS .game-view.hidden -->
   <!-- Критично при отсутствии/кэше styles.css: меню не должно оказаться под игрой -->
   <style>
     .hidden {
@@ -19,7 +38,7 @@
       min-height: var(--tg-viewport-stable-height, 100dvh);
     }
   </style>
-  <link rel="stylesheet" href="./styles.css?v=12" />
+  <link rel="stylesheet" href="./styles.css?v=13" />
 </head>
 <body>
   <section id="viewHub" class="hub" aria-label="Выбор игры">
@@ -189,9 +208,9 @@
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./tg-init.js?v=11"></script>
-  <script src="./app.js?v=11"></script>
-  <script src="./associations.js?v=11"></script>
-  <script src="./hub.js?v=11"></script>
+  <script src="./tg-init.js?v=13"></script>
+  <script src="./app.js?v=13"></script>
+  <script src="./associations.js?v=13"></script>
+  <script src="./hub.js?v=13"></script>
 </body>
 </html>
