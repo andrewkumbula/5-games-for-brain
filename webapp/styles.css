@@ -760,6 +760,11 @@ body {
   border-color: rgba(245, 200, 74, 0.4);
 }
 
+.crypto-cell--solved {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
 .crypto-cell--focus {
   border-color: rgba(49, 181, 255, 0.75);
   box-shadow: 0 0 0 2px rgba(49, 181, 255, 0.25);
@@ -768,10 +773,6 @@ body {
 .crypto-cell:disabled {
   opacity: 1;
   cursor: default;
-}
-
-.crypto-cell.crypto-cell--hint:disabled {
-  opacity: 1;
 }
 
 .crypto-actions {
