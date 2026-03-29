@@ -405,15 +405,15 @@ body {
 }
 
 .game-view {
-  /* Высота шапки игры: отступ как у хаба под TG + строка с кнопкой «назад» */
   --game-toolbar-h: calc(env(safe-area-inset-top, 0px) + var(--hub-below-tg-header, 64px) + 48px);
   position: relative;
-  /* Ниже .hub: в игре #viewHub скрыт (display:none), конфликта нет */
   z-index: 3;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .game-view.hidden {
@@ -692,22 +692,22 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  gap: 6px 8px;
+  gap: 6px 6px;
   flex-shrink: 0;
   padding: 6px 0;
-  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .crypto-word {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 2px;
-  max-width: 100%;
 }
 
 .crypto-cell {
-  width: clamp(24px, 6.5vmin, 34px);
-  min-height: 42px;
+  width: clamp(22px, 5.8vw, 32px);
+  min-height: clamp(36px, 9vw, 46px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -757,25 +757,28 @@ body {
 .crypto-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
   margin-top: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .crypto-keyboard {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 4px 3px;
   justify-content: center;
   padding: 6px 0 4px;
   flex-shrink: 0;
-  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .crypto-key {
-  min-width: 27px;
-  min-height: 36px;
-  padding: 5px 3px;
+  min-width: clamp(24px, 6.2vw, 30px);
+  min-height: 34px;
+  padding: 4px 2px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.07);
