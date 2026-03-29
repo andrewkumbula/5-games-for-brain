@@ -9,6 +9,73 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function hubTodayDate() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Moscow",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const y = parts.find(p => p.type === "year")?.value;
+    const m = parts.find(p => p.type === "month")?.value;
+    const d = parts.find(p => p.type === "day")?.value;
+    if (y && m && d) return `${y}-${m}-${d}`;
+  } catch { /* fallback */ }
+  return new Date().toISOString().slice(0, 10);
+}
+
+function gameStatus(game) {
+  try {
+    const today = hubTodayDate();
+    if (game === "wordle") {
+      const raw = localStorage.getItem("fiveletters:webapp:v2");
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (s.gameDate !== today) return null;
+      if (s.won) return "won";
+      if (s.finished) return "lost";
+      return "in_progress";
+    }
+    if (game === "associations") {
+      const raw = localStorage.getItem(`fiveletters:associations:v2:${today}`);
+      if (!raw) return null;
+      return JSON.parse(raw).status || null;
+    }
+    if (game === "cryptogram") {
+      const raw = localStorage.getItem(`fiveletters:cryptogram:v1:${today}`);
+      if (!raw) return null;
+      return JSON.parse(raw).status || null;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function statusLabel(status) {
+  if (status === "won") return { text: "Пройдено", cls: "hub-card-status--won" };
+  if (status === "lost") return { text: "Не угадано", cls: "hub-card-status--lost" };
+  if (status === "in_progress") return { text: "В процессе", cls: "hub-card-status--progress" };
+  return null;
+}
+
+function refreshHubStatuses() {
+  document.querySelectorAll(".hub-card[data-game]").forEach(card => {
+    const game = (card.getAttribute("data-game") || "").trim();
+    if (game === "soon") return;
+    let badge = card.querySelector(".hub-card-status");
+    const info = statusLabel(gameStatus(game));
+    if (!info) {
+      if (badge) badge.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "hub-card-status";
+      card.appendChild(badge);
+    }
+    badge.className = "hub-card-status " + info.cls;
+    badge.textContent = info.text;
+  });
+}
+
 function hideGameViews() {
   $("viewWordle")?.classList.add("hidden");
   $("viewAssociations")?.classList.add("hidden");
@@ -30,6 +97,7 @@ function showHub() {
   document.title = "Игры дня";
   stripHashFromUrl();
   localStorage.removeItem(HUB_ROUTE_KEY);
+  refreshHubStatuses();
 }
 
 function showWordle() {

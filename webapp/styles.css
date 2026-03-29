@@ -404,6 +404,26 @@ body {
   border-radius: 6px;
 }
 
+.hub-card-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.hub-card-status--won {
+  color: #2dc84d;
+  background: rgba(45, 200, 77, 0.12);
+}
+.hub-card-status--lost {
+  color: #f5c84a;
+  background: rgba(245, 200, 74, 0.10);
+}
+.hub-card-status--progress {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .game-view {
   --game-toolbar-h: calc(env(safe-area-inset-top, 0px) + var(--hub-below-tg-header, 64px) + 48px);
   position: relative;
