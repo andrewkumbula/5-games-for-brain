@@ -473,7 +473,7 @@ async function loadWords() {
   allowedWords = new Set(words);
 }
 
-guessBtn.addEventListener("click", () => {
+guessBtn?.addEventListener("click", () => {
   void submitGuess();
 });
 document.addEventListener("keydown", (e) => {

@@ -99,30 +99,34 @@ function onSoonClick() {
 }
 
 function initHub() {
+  if(window.__dbg)window.__dbg.push("initHub() called, cards="+document.querySelectorAll(".hub-card[data-game]").length);
   document.querySelectorAll(".js-back-to-hub").forEach((el) => {
     el.addEventListener("click", showHub);
   });
   window.showGamesHub = showHub;
 
-  document.querySelectorAll(".hub-card[data-game]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const game = (el.getAttribute("data-game") || "").trim();
-      if (game === "wordle") {
-        showWordle();
-        return;
-      }
-      if (game === "associations") {
-        showAssociations();
-        return;
-      }
-      if (game === "cryptogram") {
-        showCryptogram();
-        return;
-      }
-      if (game === "soon") {
-        onSoonClick();
-      }
-    });
+  const hubRoot = $("viewHub");
+  hubRoot?.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    const card = t.closest(".hub-card[data-game]");
+    if (!card || !hubRoot.contains(card)) return;
+    const game = (card.getAttribute("data-game") || "").trim();
+    if (game === "wordle") {
+      showWordle();
+      return;
+    }
+    if (game === "associations") {
+      showAssociations();
+      return;
+    }
+    if (game === "cryptogram") {
+      showCryptogram();
+      return;
+    }
+    if (game === "soon") {
+      onSoonClick();
+    }
   });
 
   try {

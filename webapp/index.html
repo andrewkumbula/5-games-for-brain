@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
   <title>Игры дня</title>
-  <!-- webapp-build: 13 — hub выше game-view по z-index; скрытые игры pointer-events:none -->
+  <!-- webapp-build: 14 — диагностика: почему не кликаются карточки -->
   <style>
     .hidden {
       display: none !important;
@@ -33,7 +33,7 @@
       min-height: var(--tg-viewport-stable-height, 100dvh);
     }
   </style>
-  <link rel="stylesheet" href="./styles.css?v=13" />
+  <link rel="stylesheet" href="./styles.css?v=14" />
 </head>
 <body>
   <section id="viewHub" class="hub" aria-label="Выбор игры">
@@ -203,9 +203,17 @@
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./tg-init.js?v=13"></script>
-  <script src="./app.js?v=13"></script>
-  <script src="./associations.js?v=13"></script>
-  <script src="./hub.js?v=13"></script>
+  <script src="./tg-init.js?v=14"></script>
+  <script>window.__dbg=[];window.__dbgT=Date.now();window.onerror=function(m,s,l){window.__dbg.push("ERR:"+m+" @"+s+":"+l);document.title="JS ERR";var d=document.getElementById("__diag");if(d)d.textContent=window.__dbg.join("\\n")};</script>
+  <script src="./app.js?v=14"></script>
+  <script>window.__dbg.push("app.js OK "+(Date.now()-window.__dbgT)+"ms");</script>
+  <script src="./associations.js?v=14"></script>
+  <script>window.__dbg.push("assoc.js OK "+(Date.now()-window.__dbgT)+"ms");</script>
+  <script src="./hub.js?v=14"></script>
+  <script>window.__dbg.push("hub.js OK "+(Date.now()-window.__dbgT)+"ms");
+  var d=document.getElementById("__diag");if(d)d.textContent=window.__dbg.join("\n");
+  setTimeout(function(){var d2=document.getElementById("__diag");if(d2)d2.textContent=window.__dbg.join("\n")},500);
+  </script>
+  <div id="__diag" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#000;color:#0f0;font:11px/1.4 monospace;padding:6px 10px;max-height:30vh;overflow:auto;pointer-events:none;opacity:0.85"></div>
 </body>
 </html>
