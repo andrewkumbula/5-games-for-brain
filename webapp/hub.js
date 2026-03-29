@@ -714,7 +714,6 @@ function renderCrypto() {
           cryptoState.focusEditableIdx = pos;
           saveProgress(cryptoState);
           renderCrypto();
-          document.getElementById("cryptoHiddenInput")?.focus();
         }
       });
     }
