@@ -175,6 +175,7 @@ if (document.readyState === "loading") {
 }
 
 /** Криптограмма (встроена в hub.js — один запрос, без отдельного cryptogram.js). */
+(function cryptogramModule() {
 /**
  * Криптограмма: фраза дня, буквы заменены числами. Данные: cryptograms.json.
  *
@@ -809,3 +810,4 @@ async function bootCryptogram() {
 }
 
 window.startCryptogram = bootCryptogram;
+})();
