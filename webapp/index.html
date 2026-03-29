@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
   <title>Игры дня</title>
-  <!-- webapp-build: 12 — .game-view.hidden / .hub.hidden (CSS перебивал .hidden) -->
-  <!-- Критично при отсутствии/кэше styles.css: меню не должно оказаться под игрой -->
+  <!-- webapp-build: 13 — hub выше game-view по z-index; скрытые игры pointer-events:none -->
   <style>
     .hidden {
       display: none !important;
@@ -13,6 +12,17 @@
     .game-view.hidden,
     .hub.hidden {
       display: none !important;
+      pointer-events: none !important;
+    }
+    .game-view.hidden {
+      pointer-events: none !important;
+    }
+    .hub {
+      position: relative;
+      z-index: 10;
+    }
+    .game-view {
+      z-index: 3;
     }
     html,
     body {
@@ -23,7 +33,7 @@
       min-height: var(--tg-viewport-stable-height, 100dvh);
     }
   </style>
-  <link rel="stylesheet" href="./styles.css?v=12" />
+  <link rel="stylesheet" href="./styles.css?v=13" />
 </head>
 <body>
   <section id="viewHub" class="hub" aria-label="Выбор игры">
@@ -193,9 +203,9 @@
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="./tg-init.js?v=12"></script>
-  <script src="./app.js?v=12"></script>
-  <script src="./associations.js?v=12"></script>
-  <script src="./hub.js?v=12"></script>
+  <script src="./tg-init.js?v=13"></script>
+  <script src="./app.js?v=13"></script>
+  <script src="./associations.js?v=13"></script>
+  <script src="./hub.js?v=13"></script>
 </body>
 </html>
