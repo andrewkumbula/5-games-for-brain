@@ -677,6 +677,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-x: hidden;
 }
 
 .game-view .crypto-app {
@@ -691,20 +692,22 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  gap: 8px 10px;
+  gap: 6px 8px;
   flex-shrink: 0;
   padding: 6px 0;
+  max-width: 100%;
 }
 
 .crypto-word {
   display: flex;
   flex-wrap: nowrap;
-  gap: 3px;
+  gap: 2px;
+  max-width: 100%;
 }
 
 .crypto-cell {
-  width: clamp(28px, 7.5vmin, 36px);
-  min-height: 46px;
+  width: clamp(24px, 6.5vmin, 34px);
+  min-height: 42px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -762,16 +765,17 @@ body {
 .crypto-keyboard {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   justify-content: center;
   padding: 6px 0 4px;
   flex-shrink: 0;
+  max-width: 100%;
 }
 
 .crypto-key {
-  min-width: 30px;
-  min-height: 38px;
-  padding: 6px 4px;
+  min-width: 27px;
+  min-height: 36px;
+  padding: 5px 3px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.07);

@@ -99,7 +99,6 @@ function onSoonClick() {
 }
 
 function initHub() {
-  if(window.__dbg)window.__dbg.push("initHub() called, cards="+document.querySelectorAll(".hub-card[data-game]").length);
   document.querySelectorAll(".js-back-to-hub").forEach((el) => {
     el.addEventListener("click", showHub);
   });
