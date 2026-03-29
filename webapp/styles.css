@@ -497,6 +497,27 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.game-bottom-guess {
+  font: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 320px;
+  padding: 14px 20px;
+  min-height: 50px;
+  border-radius: 12px;
+  border: none;
+  background: var(--green, #6aaa64);
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-bottom-guess:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .game-view .keyboard {
   margin-top: auto;
 }
