@@ -15,8 +15,8 @@
   /* Подстраиваем под низкую высоту (TG mini app, маленький экран): ~запас под шапку, бейдж, текст, клавиатуру */
   --tile-cell-h: 54px;
   --tile-cell-h: min(54px, max(30px, calc((100dvh - 340px) / 6)));
-  --kb-key-h: 34px;
-  --kb-key-h: min(34px, max(24px, calc((100dvh - 380px) * 0.065)));
+  --kb-key-h: 42px;
+  --kb-key-h: min(42px, max(30px, calc((100dvh - 340px) * 0.075)));
   --app-pad-y: clamp(8px, 2.2vmin, 18px);
 }
 
@@ -224,13 +224,13 @@ body {
   background: #3a3e46;
   color: #e8ecf3;
   font-weight: 700;
-  font-size: clamp(10px, calc(var(--kb-key-h) * 0.38), 13px);
+  font-size: clamp(12px, calc(var(--kb-key-h) * 0.38), 16px);
 }
 .kb-key.green { background: var(--green); color: #f3fff5; }
 .kb-key.yellow { background: var(--yellow); color: #fff; }
 .kb-key.black { background: #60656f; color: #fff; }
 .kb-key.action {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.2px;
 }
 .kb-key:disabled {
@@ -256,7 +256,7 @@ body {
 @media (max-width: 390px) {
   :root {
     --tile-cell-h: min(48px, max(30px, calc((100dvh - 300px) / 6)));
-    --kb-key-h: min(32px, max(24px, calc((100dvh - 340px) * 0.065)));
+    --kb-key-h: min(38px, max(28px, calc((100dvh - 300px) * 0.07)));
   }
   .app {
     padding-left: 10px;
@@ -274,7 +274,7 @@ body {
     height: clamp(40px, 11vmin, 44px);
   }
   .kb-key.action {
-    font-size: clamp(9px, calc(var(--kb-key-h) * 0.32), 10px);
+    font-size: clamp(10px, calc(var(--kb-key-h) * 0.34), 12px);
   }
 }
 
@@ -282,7 +282,7 @@ body {
 @media (max-height: 640px) {
   :root {
     --tile-cell-h: min(46px, max(28px, calc((100dvh - 300px) / 6)));
-    --kb-key-h: min(30px, max(22px, calc((100dvh - 320px) * 0.055)));
+    --kb-key-h: min(36px, max(26px, calc((100dvh - 300px) * 0.065)));
   }
 }
 
@@ -518,7 +518,12 @@ body {
   cursor: default;
 }
 
-.game-view .keyboard {
+#viewWordle .keyboard {
+  margin-top: clamp(6px, 1.5vmin, 12px);
+}
+
+.game-view .assoc-app .keyboard,
+.game-view .crypto-app .keyboard {
   margin-top: auto;
 }
 
