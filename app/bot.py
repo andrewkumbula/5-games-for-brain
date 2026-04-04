@@ -19,6 +19,15 @@ from app.text import normalize_word, is_valid_word
 from app.words import load_word_lists, check_dictionary, ensure_answers
 
 
+def _load_words_from_db_or_json():
+    """Load word lists: prefer DB, fallback to words.json."""
+    with db.get_conn(DB_PATH) as conn:
+        pools = db.get_all_words_by_pool(conn)
+    if pools["answers"]:
+        return pools
+    return ensure_answers(load_word_lists(WORDS_PATH))
+
+
 def _is_start_command_text(text: str | None) -> bool:
     """Текст вида /start или /start@bot — если Command() не сработал, обработаем здесь."""
     if not text:
@@ -47,7 +56,7 @@ def instruction_text() -> str:
 
 def build_router() -> Router:
     router = Router()
-    word_lists = ensure_answers(load_word_lists(WORDS_PATH))
+    word_lists = _load_words_from_db_or_json()
     answers = word_lists["answers"]
     allowed = set(word_lists["allowed"])
     words_missing = not answers
@@ -252,6 +261,29 @@ def build_router() -> Router:
             f"Сыграно: {stats_data['total']}\nПобед: {stats_data['wins']}",
             reply_markup=build_keyboard(),
         )
+
+    @router.message(Command("notify"))
+    async def notify_toggle(message: Message) -> None:
+        args = (message.text or "").split(maxsplit=1)
+        arg = args[1].strip().lower() if len(args) > 1 else ""
+        disable_words = {"off", "0", "стоп", "выкл", "stop", "нет"}
+        enabled = arg not in disable_words
+        with db.get_conn(DB_PATH) as conn:
+            db.get_or_create_user(
+                conn,
+                telegram_id=message.from_user.id,
+                username=message.from_user.username,
+            )
+            db.set_notify(conn, message.from_user.id, enabled)
+        if enabled:
+            await message.answer(
+                "Напоминания включены. Каждый день в 8:00 по Москве придёт уведомление о новом задании.\n"
+                "Отключить: /notify off",
+            )
+        else:
+            await message.answer(
+                "Напоминания отключены.\nВключить снова: /notify on",
+            )
 
     @router.callback_query(F.data.in_({"new_game", "help", "giveup"}))
     async def inline_button_handler(callback: CallbackQuery) -> None:

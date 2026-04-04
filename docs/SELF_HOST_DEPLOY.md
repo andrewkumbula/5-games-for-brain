@@ -86,4 +86,14 @@ This does:
 
 - `curl -I https://wordle.kumbuland.ru/webapp/index.html`
 - `curl -I https://wordle.kumbuland.ru/words.json`
+- **Проверьте, что JS реально отдаётся с 200** (частая ошибка — неверный путь):
+  - `curl -I https://wordle.kumbuland.ru/webapp/hub.js`
 - open bot `/start` and check button `Открыть игру`
+
+### Если меню есть, но игры не открываются
+
+1. **URL в BotFather / `WEBAPP_URL`** должен указывать на каталог `webapp`, например  
+   `https://wordle.kumbuland.ru/webapp/index.html` (или `…/webapp/`).  
+   Если указать только корень сайта без `/webapp/`, скрипты не загрузятся.
+2. В браузере (или в DevTools Telegram Desktop) откройте консоль: при 404 на `hub.js` / `app.js` будет видно.
+3. Убедитесь, что nginx `root` указывает на корень репозитория (рядом должны лежать папки `webapp/` и при необходимости `words.json` в корне, как в примере конфига).

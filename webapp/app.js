@@ -265,13 +265,17 @@ function formatCountdown(total) {
 }
 
 async function loadDailyMeta() {
-  const candidates = ["./daily.json", "../daily.json", "/daily.json", "/webapp/daily.json"];
+  const candidates = [
+    "/api/daily",
+    "./daily.json",
+    "../daily.json",
+    "/daily.json",
+    "/webapp/daily.json",
+  ];
   for (const url of candidates) {
     try {
       const response = await fetchWithTimeout(url, 6000);
-      if (!response.ok) {
-        continue;
-      }
+      if (!response.ok) continue;
       const data = await response.json();
       if (data && typeof data.word === "string" && typeof data.game_date === "string") {
         return data;
@@ -290,14 +294,18 @@ function setupState() {
     typeof dailyMeta?.day_number === "number" ? dailyMeta.day_number : dayNumber();
   dayBadgeEl.textContent = `СЛОВО ДНЯ №${dayNum}`;
 
+  const saved = load();
+  const hasSaved = saved && saved.gameDate === gameDate;
+
   if (dailyMeta?.word) {
     answer = normalize(dailyMeta.word);
-  } else if (!answer) {
+  } else if (hasSaved && saved._a) {
+    answer = saved._a;
+  } else {
     answer = pickWord(words, dayNum);
   }
 
-  const saved = load();
-  if (saved && saved.gameDate === gameDate) {
+  if (hasSaved) {
     state = saved;
   } else {
     state = {
@@ -308,8 +316,9 @@ function setupState() {
       finished: false,
       won: false,
     };
-    save();
   }
+  state._a = answer;
+  save();
   render();
 }
 
@@ -337,6 +346,25 @@ async function submitGuess() {
   render();
   await revealRow(rowIndex, marks);
   render();
+  if (state.finished) reportResult();
+}
+
+function reportResult() {
+  if (!state?.finished) return;
+  const tg = window.Telegram?.WebApp;
+  const telegramId = tg?.initDataUnsafe?.user?.id;
+  if (!telegramId) return;
+  const body = {
+    telegram_id: telegramId,
+    game_date: state.gameDate,
+    attempts: state.guesses.length,
+    won: state.won,
+  };
+  fetch("/api/wordle/result", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => {});
 }
 
 function buildKeyboardState() {
@@ -440,6 +468,7 @@ function renderKeyboard() {
 
 async function loadWords() {
   const candidates = [
+    "/api/words",
     "./words.json",
     "../words.json",
     "/words.json",
@@ -448,17 +477,13 @@ async function loadWords() {
   for (const url of candidates) {
     try {
       const response = await fetchWithTimeout(url, 8000);
-      if (!response.ok) {
-        continue;
-      }
+      if (!response.ok) continue;
       const payload = await response.json();
       const answersRaw = Array.isArray(payload) ? payload : payload.answers || [];
       const allowedRaw = Array.isArray(payload) ? payload : payload.allowed || answersRaw;
       const normalizedAnswers = answersRaw.map(normalize).filter(isValidWord);
       const normalizedAllowed = allowedRaw.map(normalize).filter(isValidWord);
-      if (normalizedAnswers.length) {
-        words = normalizedAnswers;
-      }
+      if (normalizedAnswers.length) words = normalizedAnswers;
       if (normalizedAllowed.length) {
         allowedWords = new Set(normalizedAllowed);
       } else {
@@ -466,10 +491,9 @@ async function loadWords() {
       }
       return;
     } catch {
-      // try next candidate URL
+      // try next
     }
   }
-  // fallback list remains active
   allowedWords = new Set(words);
 }
 
@@ -558,15 +582,10 @@ async function boot() {
   } catch {
     dailyMeta = null;
   }
-  if (dailyMeta?.word) {
-    answer = normalize(dailyMeta.word);
-  } else {
-    answer = pickWord(words, dayNumber());
-    if (statusEl) {
-      statusEl.textContent = "Нет daily.json — локальное слово. Запустите бота на сервере.";
-    }
-  }
   setupState();
+  if (!dailyMeta?.word && statusEl && !state?.guesses?.length) {
+    statusEl.textContent = "Нет daily.json — локальное слово. Запустите бота на сервере.";
+  }
   setTimeout(() => tryFocusHiddenInput(), 0);
 }
 

@@ -729,8 +729,24 @@ body {
 .game-view .crypto-app {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
+}
+
+.crypto-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+.crypto-dock {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .crypto-field {
@@ -826,9 +842,9 @@ body {
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   flex-shrink: 0;
-  margin-top: auto;
   width: 100%;
   box-sizing: border-box;
+  padding-top: 6px;
 }
 
 .crypto-keyboard {
@@ -836,9 +852,11 @@ body {
   flex-direction: column;
   gap: 5px;
   justify-content: center;
-  padding: 6px 0 4px;
+  align-items: center;
+  padding: 4px 0 2px;
   flex-shrink: 0;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
 }
 

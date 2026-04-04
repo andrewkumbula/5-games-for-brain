@@ -258,7 +258,11 @@ const FALLBACK_PHRASES = [
   { id: "fallback_01", category: "proverbs", text: "без труда не вытащишь и рыбку из пруда" },
 ];
 
-const RU_LETTERS = "абвгдежзийклмнопрстуфхцчшщъыьэюя".split("");
+const RU_KB_ROWS = [
+  "йцукенгшщзх".split(""),
+  "фывапролджэ".split(""),
+  "ячсмитьбюъ".split(""),
+];
 
 function storageKey(playDate) {
   return `${STORAGE_PREFIX}:${playDate}`;
@@ -387,6 +391,72 @@ function assignCodes(letters, seed) {
   return { letterToCode, codeToLetter, ordered };
 }
 
+function letterFrequencies(letters) {
+  /** @type {Record<string, number>} */
+  const freq = {};
+  for (const ch of letters) {
+    freq[ch] = (freq[ch] || 0) + 1;
+  }
+  return freq;
+}
+
+/**
+ * Открываем все клетки выбранных букв. Хотя бы один тип букв остаётся полностью скрытым (если в фразе ≥2 разных букв).
+ * Добираем типы по частоте, пока не наберём достаточно открытых клеток — иначе старт с 1–2 буквами неиграбелен.
+ */
+function computeHintIndices(letters, seed) {
+  const n = letters.length;
+  const uniqueList = [...new Set(letters)];
+  const nU = uniqueList.length;
+  if (nU <= 1) {
+    return new Set();
+  }
+  const freq = letterFrequencies(letters);
+  const maxHintTypes = nU - 1;
+  const minTypes = Math.min(maxHintTypes, Math.max(2, Math.ceil(nU * 0.32)));
+  const minPositions = Math.min(n, Math.max(6, Math.ceil(n * 0.26)));
+
+  const tieBreak = shuffleWithSeed([...uniqueList], seed ^ 0x3c6ef372);
+  const rank = new Map(tieBreak.map((ch, i) => [ch, i]));
+  const orderedByFreq = [...uniqueList].sort((a, b) => {
+    const df = freq[b] - freq[a];
+    if (df !== 0) return df;
+    return (rank.get(a) || 0) - (rank.get(b) || 0);
+  });
+
+  const hintLetters = new Set();
+  let covered = 0;
+
+  for (const ch of orderedByFreq) {
+    if (hintLetters.size >= maxHintTypes) break;
+    hintLetters.add(ch);
+    covered += freq[ch];
+    if (covered >= minPositions && hintLetters.size >= minTypes) break;
+  }
+
+  while (hintLetters.size < minTypes && hintLetters.size < maxHintTypes) {
+    const next = orderedByFreq.find((c) => !hintLetters.has(c));
+    if (!next) break;
+    hintLetters.add(next);
+    covered += freq[next];
+  }
+
+  let guard = 0;
+  while (covered < minPositions && hintLetters.size < maxHintTypes && guard < nU) {
+    guard += 1;
+    const next = orderedByFreq.find((c) => !hintLetters.has(c));
+    if (!next) break;
+    hintLetters.add(next);
+    covered += freq[next];
+  }
+
+  const hints = new Set();
+  for (let li = 0; li < letters.length; li += 1) {
+    if (hintLetters.has(letters[li])) hints.add(li);
+  }
+  return hints;
+}
+
 /**
  * @param {{ id: string, text: string }} phraseEntry
  * @param {string} gameDate
@@ -396,15 +466,8 @@ function buildPuzzle(phraseEntry, gameDate) {
   const seed = seedForPhrase(gameDate, phraseEntry.id);
   const { letters, cells } = buildLetterLayout(text);
   const { letterToCode, codeToLetter } = assignCodes(letters, seed);
-  const rng = mulberry32(seed ^ 0x9e3779b9);
-  const wantHints = 2 + Math.floor(rng() * 4);
-  const maxHints = Math.max(0, letters.length - 1);
-  const hintCount = Math.min(wantHints, maxHints);
-  const order = shuffleWithSeed(
-    letters.map((_, i) => i),
-    seed ^ 0xdeadbeef,
-  );
-  const hints = new Set(order.slice(0, hintCount));
+
+  const hints = computeHintIndices(letters, seed ^ 0x9e3779b9);
 
   return {
     phraseId: phraseEntry.id,
@@ -538,6 +601,7 @@ let cryptoPuzzle = null;
  *   gameDate: string,
  *   phraseId: string,
  *   guessesByCode: Record<string, string>,
+ *   filledCells: Record<string, boolean>,
  *   mistakes: number,
  *   status: "in_progress" | "won" | "lost",
  *   focusEditableIdx: number
@@ -566,19 +630,31 @@ function initGuessesFromHints(puzzle) {
 
 function setupState(playDate, puzzle, saved) {
   if (saved && saved.phraseId === puzzle.phraseId && saved.gameDate === playDate) {
+    let fc = saved.filledCells || {};
+    if (!saved.filledCells && saved.guessesByCode) {
+      fc = {};
+      for (let li = 0; li < puzzle.letters.length; li += 1) {
+        if (puzzle.hints.has(li)) continue;
+        const ch = puzzle.letters[li];
+        const code = puzzle.letterToCode[ch];
+        if (saved.guessesByCode[String(code)] === ch) fc[String(li)] = true;
+      }
+    }
     cryptoState = {
       gameDate: playDate,
       phraseId: puzzle.phraseId,
-      guessesByCode: { ...saved.guessesByCode, ...initGuessesFromHints(puzzle) },
+      guessesByCode: {},
+      filledCells: fc,
       mistakes: saved.mistakes || 0,
-      status: saved.status || "in_progress",
+      status: saved.status === "won" || saved.status === "lost" ? saved.status : "in_progress",
       focusEditableIdx: saved.focusEditableIdx || 0,
     };
   } else {
     cryptoState = {
       gameDate: playDate,
       phraseId: puzzle.phraseId,
-      guessesByCode: initGuessesFromHints(puzzle),
+      guessesByCode: {},
+      filledCells: {},
       mistakes: 0,
       status: "in_progress",
       focusEditableIdx: 0,
@@ -598,76 +674,90 @@ function currentFocusLi() {
   return ed[Math.min(cryptoState.focusEditableIdx, ed.length - 1)];
 }
 
+function advanceFocusToNextUnsolved() {
+  if (!cryptoPuzzle || !cryptoState) return;
+  const ed = editableLetterIndices(cryptoPuzzle);
+  const cur = cryptoState.focusEditableIdx;
+  for (let step = 1; step <= ed.length; step += 1) {
+    const idx = (cur + step) % ed.length;
+    const li = ed[idx];
+    if (!cryptoState.filledCells[String(li)]) {
+      cryptoState.focusEditableIdx = idx;
+      return;
+    }
+  }
+}
+
+function flashCell(li, type) {
+  const el = document.querySelector(`.crypto-cell[data-li="${li}"]`);
+  if (!el) return;
+  const cls = type === "ok" ? "crypto-cell--flash-ok" : "crypto-cell--flash-err";
+  el.classList.add(cls);
+  if (type === "ok") {
+    const charEl = el.querySelector(".crypto-cell-char");
+    if (charEl) charEl.textContent = cryptoPuzzle.letters[li].toUpperCase();
+  }
+  setTimeout(() => {
+    el.classList.remove(cls);
+    if (type === "err") renderCrypto();
+  }, 700);
+}
+
 function setGuessForFocus(letter) {
   if (!cryptoPuzzle || !cryptoState || cryptoState.status !== "in_progress") return;
   const li = currentFocusLi();
   if (li < 0) return;
   const ch = cryptoPuzzle.letters[li];
-  const code = cryptoPuzzle.letterToCode[ch];
-  cryptoState.guessesByCode[String(code)] = letter;
-  saveProgress(cryptoState);
-  maybeAutoWin();
-  renderCrypto();
+
+  if (letter === ch) {
+    cryptoState.filledCells[String(li)] = true;
+    haptic("light");
+    advanceFocusToNextUnsolved();
+    saveProgress(cryptoState);
+    renderCrypto();
+    flashCell(li, "ok");
+    maybeAutoWin();
+  } else {
+    cryptoState.mistakes += 1;
+    haptic("error");
+    if (cryptoState.mistakes >= MAX_MISTAKES) {
+      cryptoState.status = "lost";
+      saveProgress(cryptoState);
+      renderCrypto();
+    } else {
+      saveProgress(cryptoState);
+      renderCrypto();
+      flashCell(li, "err");
+    }
+  }
 }
 
 function maybeAutoWin() {
   if (!cryptoPuzzle || !cryptoState || cryptoState.status !== "in_progress") return;
-  if (isWinning(cryptoPuzzle, cryptoState.guessesByCode)) {
+  const ed = editableLetterIndices(cryptoPuzzle);
+  const allFilled = ed.every((li) => cryptoState.filledCells[String(li)]);
+  if (allFilled) {
     cryptoState.status = "won";
     saveProgress(cryptoState);
+    renderCrypto();
     haptic("success");
   }
 }
 
 function onCheck() {
   if (!cryptoPuzzle || !cryptoState || cryptoState.status !== "in_progress") return;
-
-  let wrong = 0;
-  for (const code of codesNeedingInput(cryptoPuzzle)) {
-    const g = cryptoState.guessesByCode[String(code)];
-    if (g == null || g === "") continue;
-    if (g !== cryptoPuzzle.codeToLetter[code]) wrong += 1;
+  const ed = editableLetterIndices(cryptoPuzzle);
+  const filled = ed.filter((li) => cryptoState.filledCells[String(li)]).length;
+  if (cryptoStatusEl) {
+    cryptoStatusEl.textContent = filled >= ed.length
+      ? "Все буквы на месте!"
+      : `Разгадано ${filled} из ${ed.length} букв.`;
   }
-
-  if (wrong === 0) {
-    if (isWinning(cryptoPuzzle, cryptoState.guessesByCode)) {
-      cryptoState.status = "won";
-      haptic("success");
-    } else {
-      if (cryptoStatusEl) cryptoStatusEl.textContent = "Заполните все буквы.";
-      haptic("light");
-    }
-    saveProgress(cryptoState);
-    renderCrypto();
-    return;
-  }
-
-  cryptoState.mistakes += wrong;
-  if (cryptoState.mistakes >= MAX_MISTAKES) {
-    cryptoState.status = "lost";
-    haptic("error");
-  } else {
-    haptic("error");
-    if (cryptoStatusEl) cryptoStatusEl.textContent = `Неверно. Ошибок за проверку: ${wrong}.`;
-  }
-  saveProgress(cryptoState);
-  renderCrypto();
+  haptic("light");
 }
 
 function onErase() {
-  if (!cryptoPuzzle || !cryptoState || cryptoState.status !== "in_progress") return;
-  const li = currentFocusLi();
-  if (li < 0) return;
-  if (cryptoPuzzle.hints.has(li)) return;
-  const code = cryptoPuzzle.letterToCode[cryptoPuzzle.letters[li]];
-  const hinted = hintLetterForCode(cryptoPuzzle, code);
-  if (hinted) {
-    cryptoState.guessesByCode[String(code)] = hinted;
-  } else {
-    delete cryptoState.guessesByCode[String(code)];
-  }
-  saveProgress(cryptoState);
-  renderCrypto();
+  // no-op: only correct letters are accepted, no need to erase
 }
 
 function moveFocus(delta) {
@@ -676,7 +766,11 @@ function moveFocus(delta) {
   if (!ed.length) return;
   let idx = ed.indexOf(currentFocusLi());
   if (idx < 0) idx = 0;
-  idx = (idx + delta + ed.length) % ed.length;
+  for (let step = 0; step < ed.length; step += 1) {
+    idx = (idx + delta + ed.length) % ed.length;
+    const li = ed[idx];
+    if (!cryptoState.filledCells[String(li)]) break;
+  }
   cryptoState.focusEditableIdx = idx;
   saveProgress(cryptoState);
   renderCrypto();
@@ -744,6 +838,20 @@ function renderCrypto() {
     wordEl.className = "crypto-word";
   }
 
+  const codeFullyFilled = {};
+  for (const ch of new Set(cryptoPuzzle.letters)) {
+    const code = cryptoPuzzle.letterToCode[ch];
+    if (codeFullyFilled[code] === false) continue;
+    codeFullyFilled[code] = true;
+    for (let i = 0; i < cryptoPuzzle.letters.length; i += 1) {
+      if (cryptoPuzzle.letters[i] !== ch) continue;
+      if (!cryptoPuzzle.hints.has(i) && !cryptoState.filledCells[String(i)]) {
+        codeFullyFilled[code] = false;
+        break;
+      }
+    }
+  }
+
   for (const c of cryptoPuzzle.cells) {
     if (c.kind === "space") {
       flushWord();
@@ -753,23 +861,28 @@ function renderCrypto() {
     const ch = cryptoPuzzle.letters[li];
     const code = cryptoPuzzle.letterToCode[ch];
     const isHint = cryptoPuzzle.hints.has(li);
-    const guess = cryptoState.guessesByCode[String(code)] || "";
-    const display = isHint ? ch : guess || "";
-    const editable = !isHint && cryptoState.status === "in_progress";
+    const isFilled = !!cryptoState.filledCells[String(li)];
+    const showLetter = isHint || isFilled;
+    const editable = !isHint && !isFilled && cryptoState.status === "in_progress";
     const isFocus = editable && li === focusLi;
+    const hideNum = codeFullyFilled[code];
 
     const cell = document.createElement("button");
     cell.type = "button";
-    cell.className = "crypto-cell" + (isFocus ? " crypto-cell--focus" : "") + (isHint ? " crypto-cell--hint" : "");
-    cell.disabled = cryptoState.status !== "in_progress" || !editable;
+    let cls = "crypto-cell";
+    if (isFocus) cls += " crypto-cell--focus";
+    if (isHint) cls += " crypto-cell--hint";
+    if (isFilled) cls += " crypto-cell--solved";
+    cell.className = cls;
+    cell.disabled = !editable;
     cell.dataset.li = String(li);
 
     const charSpan = document.createElement("span");
     charSpan.className = "crypto-cell-char";
-    charSpan.textContent = display ? display.toUpperCase() : " ";
+    charSpan.textContent = showLetter ? ch.toUpperCase() : " ";
     const numSpan = document.createElement("span");
     numSpan.className = "crypto-cell-num";
-    numSpan.textContent = String(code);
+    numSpan.textContent = hideNum ? "" : String(code);
 
     cell.appendChild(charSpan);
     cell.appendChild(numSpan);
@@ -797,13 +910,18 @@ function renderCrypto() {
 
   if (cryptoKeyboardEl && cryptoState.status === "in_progress") {
     cryptoKeyboardEl.innerHTML = "";
-    RU_LETTERS.forEach((L) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "crypto-key";
-      b.textContent = L;
-      b.addEventListener("click", () => setGuessForFocus(L));
-      cryptoKeyboardEl.appendChild(b);
+    RU_KB_ROWS.forEach((letters) => {
+      const row = document.createElement("div");
+      row.className = "crypto-kb-row";
+      letters.forEach((L) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "crypto-key";
+        b.textContent = L;
+        b.addEventListener("click", () => setGuessForFocus(L));
+        row.appendChild(b);
+      });
+      cryptoKeyboardEl.appendChild(row);
     });
   } else if (cryptoKeyboardEl) {
     cryptoKeyboardEl.innerHTML = "";

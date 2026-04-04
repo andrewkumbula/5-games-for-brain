@@ -7,6 +7,13 @@ from urllib.request import urlopen
 
 from tools.dict.core import build_dictionary, validate_dictionary
 from tools.dict.quality import audit_dictionary
+from tools.dict.lex_review import (
+    apply_blocklist_file,
+    collect_lex_scores,
+    export_alphabetical,
+    load_blocklist,
+    write_lex_scores_tsv,
+)
 from tools.dict.storage import read_db, read_json, write_db, write_json
 
 
@@ -155,6 +162,144 @@ def command_quality(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_export_alpha(args: argparse.Namespace) -> int:
+    data = read_json(Path(args.words_path))
+    export_alphabetical(data.allowed, Path(args.out))
+    print(f"Слов: {len(data.allowed)} → {args.out}")
+    return 0
+
+
+def command_lex_scores(args: argparse.Namespace) -> int:
+    data = read_json(Path(args.words_path))
+    rows = collect_lex_scores(data.allowed)
+    write_lex_scores_tsv(rows, Path(args.out))
+    print(f"Строк TSV: {len(rows)} → {args.out}")
+    return 0
+
+
+def command_pipeline(args: argparse.Namespace) -> int:
+    """blocklist → pymorphy quality → опционально ИИ в файл для ручного переноса в blocklist."""
+    wp = Path(args.words_path)
+    bp = Path(args.blocklist_path)
+    do_write = args.apply
+
+    print("=== pipeline: словарь «5 букв» ===\n")
+
+    if args.skip_strip:
+        print("[1/3] strip-blocklist: пропуск (--skip-strip)")
+    else:
+        blk = load_blocklist(bp)
+        if not blk:
+            print(f"[1/3] strip-blocklist: пропуск (нет слов в {bp})")
+        else:
+            removed_a, removed_q, nbl = apply_blocklist_file(wp, bp, dry_run=not do_write)
+            mode = "записано" if do_write else "dry-run"
+            print(
+                f"[1/3] strip-blocklist ({mode}): blocklist={nbl} слов, "
+                f"-allowed {removed_a}, -answers {removed_q}",
+            )
+
+    if args.skip_quality:
+        print("[2/3] quality (pymorphy): пропуск (--skip-quality)")
+    else:
+        data = read_json(wp)
+        manual_keep: set[str] | None = None
+        kp = Path(args.keep_path)
+        if kp.exists():
+            manual_keep = {
+                line.strip().lower()
+                for line in kp.read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            }
+
+        cleaned_allowed, issues, reason_counts = audit_dictionary(
+            data,
+            min_score=args.min_score,
+            exclude_proper=not args.allow_proper,
+            require_singular=args.require_singular,
+            manual_keep=manual_keep,
+        )
+        allowed_set = set(cleaned_allowed)
+        cleaned_answers = [w for w in data.answers if w in allowed_set]
+
+        print(f"[2/3] quality: allowed {len(data.allowed)} → {len(cleaned_allowed)}; ", end="")
+        print(f"answers {len(data.answers)} → {len(cleaned_answers)}; flagged {len(issues)}")
+        if reason_counts:
+            for reason, count in reason_counts.most_common(6):
+                print(f"      - {reason}: {count}")
+
+        if args.flagged_path:
+            fp = Path(args.flagged_path)
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            fp.write_text(
+                "\n".join(f"{it.word}\t{','.join(it.reasons)}" for it in issues) + "\n",
+                encoding="utf-8",
+            )
+            print(f"      flagged → {fp}")
+
+        if do_write:
+            cleaned_data = type(data)(allowed=cleaned_allowed, answers=cleaned_answers)
+            out_json = Path(args.output_words or args.words_path)
+            write_json(out_json, cleaned_data)
+            print(f"      сохранено: {out_json}")
+        else:
+            print("      (dry-run: JSON не перезаписан)")
+
+    if not args.ai_review:
+        print("\n[3/3] AI-обзор: пропуск (добавьте --ai-review и OPENAI_API_KEY)")
+        return 0
+
+    from tools.dict.ai_batch_review import run_ai_review
+
+    data = read_json(wp)
+    pool = list(data.answers if args.ai_pool == "answers" else data.allowed)
+    if args.ai_max_words:
+        pool = pool[: int(args.ai_max_words)]
+    try:
+        n_bad, n_batches = run_ai_review(
+            pool,
+            out_path=Path(args.ai_out),
+            batch_size=args.ai_batch_size,
+            model=args.ai_model,
+            sleep_s=args.ai_sleep,
+            max_batches=args.ai_max_batches,
+        )
+    except Exception as e:
+        print(f"\n[3/3] AI-обзор: ошибка: {e}")
+        return 1
+    print(
+        f"\n[3/3] AI-обзор: добавлено подозрительных: {n_bad} "
+        f"(батчей {n_batches}) → {args.ai_out}",
+    )
+    print("    Просмотрите файл и перенесите строки в docs/blocked_words.txt, затем снова pipeline.")
+    return 0
+
+
+def command_strip_blocklist(args: argparse.Namespace) -> int:
+    removed_a, removed_q, nbl = apply_blocklist_file(
+        Path(args.words_path),
+        Path(args.blocklist_path),
+        dry_run=args.dry_run,
+    )
+    mode = "сухой прогон" if args.dry_run else "записано в words.json"
+    print(
+        f"{mode}: строк в blocklist (не пустых): {nbl}; "
+        f"убрано из allowed: {removed_a}, из answers: {removed_q}"
+    )
+    if removed_a == 0 and not args.dry_run:
+        data = read_json(Path(args.words_path))
+        from tools.dict.lex_review import load_blocklist
+
+        ghost = load_blocklist(Path(args.blocklist_path)) - set(data.allowed)
+        if ghost:
+            print(
+                "В blocklist есть слова, которых уже нет в словаре (можно удалить строки):",
+                ", ".join(sorted(ghost)[:15]),
+                "…" if len(ghost) > 15 else "",
+            )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dict")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -204,6 +349,64 @@ def build_parser() -> argparse.ArgumentParser:
     )
     quality.add_argument("--apply", action="store_true")
     quality.set_defaults(func=command_quality)
+
+    export_alpha = sub.add_parser(
+        "export-alpha",
+        help="Все слова по алфавиту с секциями по первой букве (для ручной вычитки).",
+    )
+    export_alpha.add_argument("--words-path", default="words.json")
+    export_alpha.add_argument("--out", default="docs/all_words_alpha.txt")
+    export_alpha.set_defaults(func=command_export_alpha)
+
+    lex_scores = sub.add_parser(
+        "lex-scores",
+        help="TSV: слова по возрастанию pymorphy score для NOUN+nomn (сначала сомнительные).",
+    )
+    lex_scores.add_argument("--words-path", default="words.json")
+    lex_scores.add_argument("--out", default="docs/lex_scores.tsv")
+    lex_scores.set_defaults(func=command_lex_scores)
+
+    strip_bl = sub.add_parser(
+        "strip-blocklist",
+        help="Удалить слова из docs/blocked_words.txt (и подобных) из words.json.",
+    )
+    strip_bl.add_argument("--words-path", default="words.json")
+    strip_bl.add_argument("--blocklist-path", default="docs/blocked_words.txt")
+    strip_bl.add_argument("--dry-run", action="store_true")
+    strip_bl.set_defaults(func=command_strip_blocklist)
+
+    pipe = sub.add_parser(
+        "pipeline",
+        help="Флоу: strip-blocklist → quality (pymorphy) → опционально ИИ в файл (не в рантайме бота).",
+    )
+    pipe.add_argument("--words-path", default="words.json")
+    pipe.add_argument("--blocklist-path", default="docs/blocked_words.txt")
+    pipe.add_argument(
+        "--apply",
+        action="store_true",
+        help="Записать words.json после strip и quality (без флага — только отчёт).",
+    )
+    pipe.add_argument("--skip-strip", action="store_true")
+    pipe.add_argument("--skip-quality", action="store_true")
+    pipe.add_argument("--min-score", type=float, default=0.2)
+    pipe.add_argument("--allow-proper", action="store_true")
+    pipe.add_argument("--require-singular", action="store_true")
+    pipe.add_argument("--keep-path", default="docs/manual_keep_words.txt")
+    pipe.add_argument("--output-words", help="Куда писать JSON после quality (по умолчанию --words-path)")
+    pipe.add_argument("--flagged-path", help="TSV: слово\tпричины после quality")
+    pipe.add_argument(
+        "--ai-review",
+        action="store_true",
+        help="После шагов 1–2 вызвать OpenAI и дописать подозрительные в --ai-out",
+    )
+    pipe.add_argument("--ai-out", default="docs/ai_suggested_blocklist.txt")
+    pipe.add_argument("--ai-pool", choices=["answers", "allowed"], default="answers")
+    pipe.add_argument("--ai-batch-size", type=int, default=28)
+    pipe.add_argument("--ai-model", default="gpt-4o-mini")
+    pipe.add_argument("--ai-sleep", type=float, default=0.4)
+    pipe.add_argument("--ai-max-words", type=int, help="Ограничить число слов для ИИ (тест)")
+    pipe.add_argument("--ai-max-batches", type=int, help="Ограничить число батчей (тест)")
+    pipe.set_defaults(func=command_pipeline)
 
     return parser
 

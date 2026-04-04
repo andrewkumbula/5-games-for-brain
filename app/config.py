@@ -31,3 +31,14 @@ DAILY_JSON_PATH = Path(
     os.getenv("DAILY_JSON_PATH", str(BASE_DIR / "webapp" / "daily.json"))
 ).resolve()
 DAILY_NO_REPEAT_DAYS = int(os.getenv("DAILY_NO_REPEAT_DAYS", "400"))
+API_PORT = int(os.getenv("API_PORT", "8088"))
+BLOCKED_WORDS_PATH = Path(
+    os.getenv("BLOCKED_WORDS_PATH", str(BASE_DIR / "docs" / "blocked_words.txt"))
+)
+SKIP_DAILY_MORPH_FILTER = os.getenv("SKIP_DAILY_MORPH_FILTER", "0") == "1"
+# Порог pymorphy для слова дня (выше 0.2 — меньше «фантомных» сущ.; «горшк» всё равно только blocklist)
+DAILY_MORPH_MIN_SCORE = float(os.getenv("DAILY_MORPH_MIN_SCORE", "0.22"))
+SKIP_DAILY_AI_CHECK = os.getenv("SKIP_DAILY_AI_CHECK", "0") == "1"
+DAILY_AI_MODEL = os.getenv("DAILY_AI_MODEL", "gpt-4o-mini")
+DAILY_AI_TIMEOUT = int(os.getenv("DAILY_AI_TIMEOUT", "45"))
+DAILY_AI_MAX_CANDIDATES = int(os.getenv("DAILY_AI_MAX_CANDIDATES", "30"))

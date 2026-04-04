@@ -14,7 +14,11 @@ const FALLBACK_PHRASES = [
   { id: "fallback_01", category: "proverbs", text: "без труда не вытащишь и рыбку из пруда" },
 ];
 
-const RU_LETTERS = "абвгдежзийклмнопрстуфхцчшщъыьэюя".split("");
+const RU_KB_ROWS = [
+  "йцукенгшщзх".split(""),
+  "фывапролджэ".split(""),
+  "ячсмитьбюъ".split(""),
+];
 
 function storageKey(playDate) {
   return `${STORAGE_PREFIX}:${playDate}`;
@@ -146,6 +150,72 @@ function assignCodes(letters, seed) {
   return { letterToCode, codeToLetter, ordered };
 }
 
+function letterFrequencies(letters) {
+  /** @type {Record<string, number>} */
+  const freq = {};
+  for (const ch of letters) {
+    freq[ch] = (freq[ch] || 0) + 1;
+  }
+  return freq;
+}
+
+/**
+ * Открываем все клетки выбранных букв. Хотя бы один тип букв остаётся полностью скрытым (если в фразе ≥2 разных букв).
+ * Добираем типы по частоте, пока не наберём достаточно открытых клеток.
+ */
+function computeHintIndices(letters, seed) {
+  const n = letters.length;
+  const uniqueList = [...new Set(letters)];
+  const nU = uniqueList.length;
+  if (nU <= 1) {
+    return new Set();
+  }
+  const freq = letterFrequencies(letters);
+  const maxHintTypes = nU - 1;
+  const minTypes = Math.min(maxHintTypes, Math.max(2, Math.ceil(nU * 0.32)));
+  const minPositions = Math.min(n, Math.max(6, Math.ceil(n * 0.26)));
+
+  const tieBreak = shuffleWithSeed([...uniqueList], seed ^ 0x3c6ef372);
+  const rank = new Map(tieBreak.map((ch, i) => [ch, i]));
+  const orderedByFreq = [...uniqueList].sort((a, b) => {
+    const df = freq[b] - freq[a];
+    if (df !== 0) return df;
+    return (rank.get(a) || 0) - (rank.get(b) || 0);
+  });
+
+  const hintLetters = new Set();
+  let covered = 0;
+
+  for (const ch of orderedByFreq) {
+    if (hintLetters.size >= maxHintTypes) break;
+    hintLetters.add(ch);
+    covered += freq[ch];
+    if (covered >= minPositions && hintLetters.size >= minTypes) break;
+  }
+
+  while (hintLetters.size < minTypes && hintLetters.size < maxHintTypes) {
+    const next = orderedByFreq.find((c) => !hintLetters.has(c));
+    if (!next) break;
+    hintLetters.add(next);
+    covered += freq[next];
+  }
+
+  let guard = 0;
+  while (covered < minPositions && hintLetters.size < maxHintTypes && guard < nU) {
+    guard += 1;
+    const next = orderedByFreq.find((c) => !hintLetters.has(c));
+    if (!next) break;
+    hintLetters.add(next);
+    covered += freq[next];
+  }
+
+  const hints = new Set();
+  for (let li = 0; li < letters.length; li += 1) {
+    if (hintLetters.has(letters[li])) hints.add(li);
+  }
+  return hints;
+}
+
 /**
  * @param {{ id: string, text: string }} phraseEntry
  * @param {string} gameDate
@@ -155,15 +225,7 @@ function buildPuzzle(phraseEntry, gameDate) {
   const seed = seedForPhrase(gameDate, phraseEntry.id);
   const { letters, cells } = buildLetterLayout(text);
   const { letterToCode, codeToLetter } = assignCodes(letters, seed);
-  const rng = mulberry32(seed ^ 0x9e3779b9);
-  const wantHints = 2 + Math.floor(rng() * 4);
-  const maxHints = Math.max(0, letters.length - 1);
-  const hintCount = Math.min(wantHints, maxHints);
-  const order = shuffleWithSeed(
-    letters.map((_, i) => i),
-    seed ^ 0xdeadbeef,
-  );
-  const hints = new Set(order.slice(0, hintCount));
+  const hints = computeHintIndices(letters, seed ^ 0x9e3779b9);
 
   return {
     phraseId: phraseEntry.id,
@@ -551,13 +613,18 @@ function renderCrypto() {
 
   if (cryptoKeyboardEl && cryptoState.status === "in_progress") {
     cryptoKeyboardEl.innerHTML = "";
-    RU_LETTERS.forEach((L) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "crypto-key";
-      b.textContent = L;
-      b.addEventListener("click", () => setGuessForFocus(L));
-      cryptoKeyboardEl.appendChild(b);
+    RU_KB_ROWS.forEach((letters) => {
+      const row = document.createElement("div");
+      row.className = "crypto-kb-row";
+      letters.forEach((L) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "crypto-key";
+        b.textContent = L;
+        b.addEventListener("click", () => setGuessForFocus(L));
+        row.appendChild(b);
+      });
+      cryptoKeyboardEl.appendChild(row);
     });
   } else if (cryptoKeyboardEl) {
     cryptoKeyboardEl.innerHTML = "";

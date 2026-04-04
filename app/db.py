@@ -45,12 +45,34 @@ def init_db(db_path: Path) -> None:
                 game_date TEXT PRIMARY KEY,
                 word TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS words (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                word TEXT UNIQUE NOT NULL,
+                pool TEXT NOT NULL DEFAULT 'answers',
+                active INTEGER NOT NULL DEFAULT 1,
+                added_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS user_wordle (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER NOT NULL,
+                game_date TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                won INTEGER NOT NULL DEFAULT 0,
+                finished_at TEXT,
+                UNIQUE(telegram_id, game_date)
+            );
             """
         )
-        try:
-            conn.execute("ALTER TABLE games ADD COLUMN history_message_id INTEGER")
-        except sqlite3.OperationalError:
-            pass
+        for migration in [
+            "ALTER TABLE games ADD COLUMN history_message_id INTEGER",
+            "ALTER TABLE users ADD COLUMN notify INTEGER NOT NULL DEFAULT 1",
+        ]:
+            try:
+                conn.execute(migration)
+            except sqlite3.OperationalError:
+                pass
 
 
 def get_or_create_user(conn: sqlite3.Connection, telegram_id: int, username: str | None) -> int:
@@ -159,6 +181,117 @@ def delete_game(conn: sqlite3.Connection, user_id: int, game_date: date) -> None
     game_id = int(game["id"])
     conn.execute("DELETE FROM attempts WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM games WHERE id = ?", (game_id,))
+
+
+def set_notify(conn: sqlite3.Connection, telegram_id: int, enabled: bool) -> None:
+    conn.execute(
+        "UPDATE users SET notify = ? WHERE telegram_id = ?",
+        (1 if enabled else 0, telegram_id),
+    )
+
+
+def get_subscribed_telegram_ids(
+    conn: sqlite3.Connection,
+    exclude_finished_date: date | None = None,
+) -> list[int]:
+    """Return telegram_ids with notify=1.
+
+    If *exclude_finished_date* is given, skip users who already have a
+    finished game for that date (they already opened the app today).
+    """
+    if exclude_finished_date is None:
+        rows = conn.execute(
+            "SELECT telegram_id FROM users WHERE notify = 1",
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT u.telegram_id
+            FROM users u
+            WHERE u.notify = 1
+              AND u.id NOT IN (
+                  SELECT g.user_id FROM games g
+                  WHERE g.game_date = ? AND g.finished = 1
+              )
+            """,
+            (exclude_finished_date.isoformat(),),
+        ).fetchall()
+    return [int(r["telegram_id"]) for r in rows]
+
+
+def import_words(conn: sqlite3.Connection, words: list[str], pool: str = "answers") -> int:
+    """Bulk-import words into the words table, skipping duplicates. Returns count of new rows."""
+    added = 0
+    for w in words:
+        try:
+            conn.execute(
+                "INSERT INTO words (word, pool) VALUES (?, ?)",
+                (w, pool),
+            )
+            added += 1
+        except sqlite3.IntegrityError:
+            pass
+    return added
+
+
+def get_active_words(conn: sqlite3.Connection, pool: str = "answers") -> list[str]:
+    rows = conn.execute(
+        "SELECT word FROM words WHERE active = 1 AND pool = ? ORDER BY word",
+        (pool,),
+    ).fetchall()
+    return [r["word"] for r in rows]
+
+
+def get_all_words_by_pool(conn: sqlite3.Connection) -> dict[str, list[str]]:
+    answers = get_active_words(conn, "answers")
+    allowed = get_active_words(conn, "allowed")
+    return {"answers": answers, "allowed": allowed if allowed else answers}
+
+
+def save_webapp_result(
+    conn: sqlite3.Connection,
+    telegram_id: int,
+    game_date: str,
+    attempts: int,
+    won: bool,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO user_wordle (telegram_id, game_date, attempts, won, finished_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(telegram_id, game_date)
+        DO UPDATE SET attempts = excluded.attempts,
+                      won = excluded.won,
+                      finished_at = excluded.finished_at
+        """,
+        (telegram_id, game_date, attempts, 1 if won else 0),
+    )
+
+
+def get_webapp_result(conn: sqlite3.Connection, telegram_id: int, game_date: str):
+    return conn.execute(
+        "SELECT * FROM user_wordle WHERE telegram_id = ? AND game_date = ?",
+        (telegram_id, game_date),
+    ).fetchone()
+
+
+def deactivate_words(conn: sqlite3.Connection, words: list[str]) -> int:
+    """Mark words as inactive. Returns how many were actually deactivated."""
+    count = 0
+    for w in words:
+        cur = conn.execute(
+            "UPDATE words SET active = 0 WHERE word = ? AND active = 1",
+            (w,),
+        )
+        count += cur.rowcount
+    return count
+
+
+def replace_daily_word(conn: sqlite3.Connection, game_date: date, new_word: str) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO daily_word (game_date, word) VALUES (?, ?)",
+        (game_date.isoformat(), new_word),
+    )
 
 
 def get_stats(conn: sqlite3.Connection, user_id: int) -> dict:
