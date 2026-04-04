@@ -401,8 +401,8 @@ function letterFrequencies(letters) {
 }
 
 /**
- * Открываем все клетки выбранных букв. Хотя бы один тип букв остаётся полностью скрытым (если в фразе ≥2 разных букв).
- * Добираем типы по частоте, пока не наберём достаточно открытых клеток — иначе старт с 1–2 буквами неиграбелен.
+ * Открываем все клетки выбранных букв. Один тип букв остаётся полностью скрытым (если в фразе ≥2 букв).
+ * Жёсткий потолок по числу открытых клеток — иначе 2–3 частые буквы (о, е, а…) открывают почти всю фразу.
  */
 function computeHintIndices(letters, seed) {
   const n = letters.length;
@@ -413,8 +413,10 @@ function computeHintIndices(letters, seed) {
   }
   const freq = letterFrequencies(letters);
   const maxHintTypes = nU - 1;
-  const minTypes = Math.min(maxHintTypes, Math.max(2, Math.ceil(nU * 0.32)));
-  const minPositions = Math.min(n, Math.max(6, Math.ceil(n * 0.26)));
+  const maxTypes = Math.min(maxHintTypes, Math.max(2, Math.ceil(nU * 0.22)));
+  const minCells = Math.min(n - 1, Math.max(5, Math.ceil(n * 0.11)));
+  const maxCells = Math.min(n - 1, Math.max(minCells, Math.ceil(n * 0.27)));
+  const minTypes = 2;
 
   const tieBreak = shuffleWithSeed([...uniqueList], seed ^ 0x3c6ef372);
   const rank = new Map(tieBreak.map((ch, i) => [ch, i]));
@@ -427,27 +429,26 @@ function computeHintIndices(letters, seed) {
   const hintLetters = new Set();
   let covered = 0;
 
-  for (const ch of orderedByFreq) {
-    if (hintLetters.size >= maxHintTypes) break;
+  function tryAdd(ch) {
+    if (hintLetters.has(ch)) return false;
+    if (hintLetters.size >= maxTypes) return false;
+    const add = freq[ch];
+    if (covered + add > maxCells) return false;
     hintLetters.add(ch);
-    covered += freq[ch];
-    if (covered >= minPositions && hintLetters.size >= minTypes) break;
+    covered += add;
+    return true;
   }
 
-  while (hintLetters.size < minTypes && hintLetters.size < maxHintTypes) {
-    const next = orderedByFreq.find((c) => !hintLetters.has(c));
-    if (!next) break;
-    hintLetters.add(next);
-    covered += freq[next];
+  for (const ch of orderedByFreq) {
+    if (covered >= minCells && hintLetters.size >= minTypes) break;
+    tryAdd(ch);
   }
 
-  let guard = 0;
-  while (covered < minPositions && hintLetters.size < maxHintTypes && guard < nU) {
-    guard += 1;
-    const next = orderedByFreq.find((c) => !hintLetters.has(c));
-    if (!next) break;
-    hintLetters.add(next);
-    covered += freq[next];
+  if (covered < minCells || hintLetters.size < minTypes) {
+    for (let i = orderedByFreq.length - 1; i >= 0; i -= 1) {
+      if (covered >= minCells && hintLetters.size >= minTypes) break;
+      tryAdd(orderedByFreq[i]);
+    }
   }
 
   const hints = new Set();
