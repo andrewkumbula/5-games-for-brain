@@ -1,5 +1,5 @@
 /**
- * Ассоциации: 4 группы по 4 слова из сетки 4×4. Данные: associations.json.
+ * Ассоциации: 6 групп по 4 слова, сетка 6×4. Данные: associations.json.
  *
  * Тестирование в браузере:
  *   ?date=2026-03-27        — какой день считать «сегодня» (подбор пазла по дате)
@@ -8,11 +8,13 @@
  */
 const ASSOC_LEGACY_KEY = "fiveletters:associations:v1";
 
-const MAX_MISTAKES = 4;
+const GROUP_COUNT = 6;
+const WORDS_PER_GROUP = 4;
 const SELECT_LIMIT = 4;
+const MAX_MISTAKES = 5;
 
 function storageKey(playDate) {
-  return `fiveletters:associations:v2:${playDate}`;
+  return `fiveletters:associations:v3:${playDate}`;
 }
 
 const assocGridEl = document.getElementById("assocGrid");
@@ -211,14 +213,15 @@ async function loadAssocTemplate(isoDate) {
       if (!res.ok) continue;
       const data = await res.json();
       const list = Array.isArray(data.puzzles) ? data.puzzles : [];
-      const exact = list.find((p) => p.date === isoDate);
-      if (exact && exact.groups?.length === 4) {
-        return normalizePuzzle(exact);
+      const valid = list.map(normalizePuzzle).filter(isValidAssocPuzzle);
+      if (!valid.length) continue;
+      const exactRaw = list.find((p) => p.date === isoDate);
+      if (exactRaw) {
+        const p = normalizePuzzle(exactRaw);
+        if (isValidAssocPuzzle(p)) return p;
       }
-      if (list.length) {
-        const idx = seedFromDate(isoDate) % list.length;
-        return normalizePuzzle(list[idx]);
-      }
+      const idx = seedFromDate(isoDate) % valid.length;
+      return valid[idx];
     } catch {
       /* next */
     }
@@ -263,7 +266,14 @@ function renderAssoc() {
     }
   }
 
-  const colors = ["#1e6b3a", "#2a4f8f", "#8f7a2a", "#5a3d7a"];
+  const colors = [
+    "#1e6b3a",
+    "#2a4f8f",
+    "#8f7a2a",
+    "#5a3d7a",
+    "#8f4a3a",
+    "#3a6b8f",
+  ];
   if (assocFoundEl) {
     assocFoundEl.innerHTML = "";
     assocState.found.forEach((g, i) => {
@@ -319,7 +329,13 @@ function renderAssoc() {
 function setupAssocState(playDate) {
   if (!assocPuzzle) return;
   const saved = loadAssocProgressFor(playDate);
-  if (saved && saved.gameDate === playDate && Array.isArray(saved.order)) {
+  const expectedWords = GROUP_COUNT * WORDS_PER_GROUP;
+  if (
+    saved &&
+    saved.gameDate === playDate &&
+    Array.isArray(saved.order) &&
+    saved.order.length === expectedWords
+  ) {
     assocState = saved;
     return;
   }
@@ -379,7 +395,7 @@ async function onAssocCheck() {
   assocState.selected = [];
   haptic("success");
 
-  if (assocState.found.length >= 4) {
+  if (assocState.found.length >= GROUP_COUNT) {
     assocState.status = "won";
   }
   saveAssocProgress();
@@ -402,8 +418,10 @@ function wireAssocHandlers() {
 }
 
 function isValidAssocPuzzle(p) {
-  if (!p?.groups || p.groups.length !== 4) return false;
-  return p.groups.every((g) => Array.isArray(g.items) && g.items.length === 4 && g.name);
+  if (!p?.groups || p.groups.length !== GROUP_COUNT) return false;
+  return p.groups.every(
+    (g) => Array.isArray(g.items) && g.items.length === WORDS_PER_GROUP && g.name,
+  );
 }
 
 async function bootAssociations() {
@@ -416,7 +434,7 @@ async function bootAssociations() {
   if (!assocPuzzle || !isValidAssocPuzzle(assocPuzzle)) {
     if (assocStatusEl) {
       assocStatusEl.textContent =
-        "Нет головоломки. Добавьте associations.json (4 группы по 4 слова).";
+        "Нет головоломки. Добавьте associations.json (6 групп по 4 слова).";
     }
     if (assocMistakesEl) assocMistakesEl.textContent = "";
     updateAssocDebugUi(playDate);

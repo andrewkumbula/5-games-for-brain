@@ -2,6 +2,8 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
+from app.text import is_valid_word, normalize_word
+
 
 def get_conn(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
@@ -63,6 +65,19 @@ def init_db(db_path: Path) -> None:
                 finished_at TEXT,
                 UNIQUE(telegram_id, game_date)
             );
+
+            CREATE TABLE IF NOT EXISTS dict_unknown_guess (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                word TEXT NOT NULL UNIQUE,
+                first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+                last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+                hit_count INTEGER NOT NULL DEFAULT 1,
+                source TEXT NOT NULL,
+                telegram_id INTEGER,
+                game_date TEXT,
+                review_status TEXT NOT NULL DEFAULT 'pending'
+            );
+            CREATE INDEX IF NOT EXISTS idx_dict_unknown_review ON dict_unknown_guess(review_status);
             """
         )
         for migration in [
@@ -273,6 +288,39 @@ def get_webapp_result(conn: sqlite3.Connection, telegram_id: int, game_date: str
         "SELECT * FROM user_wordle WHERE telegram_id = ? AND game_date = ?",
         (telegram_id, game_date),
     ).fetchone()
+
+
+def record_dict_unknown_guess(
+    conn: sqlite3.Connection,
+    word: str,
+    *,
+    source: str,
+    telegram_id: int | None = None,
+    game_date: str | None = None,
+) -> None:
+    """Сохраняет догадку, которой нет в словаре (для последующей проверки / ИИ).
+
+    Повтор того же слова увеличивает hit_count. Слова из активного словаря не пишем.
+    """
+    w = normalize_word(word)
+    if not is_valid_word(w):
+        return
+    row = conn.execute(
+        "SELECT 1 FROM words WHERE word = ? AND active = 1 LIMIT 1",
+        (w,),
+    ).fetchone()
+    if row:
+        return
+    conn.execute(
+        """
+        INSERT INTO dict_unknown_guess (word, source, telegram_id, game_date)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(word) DO UPDATE SET
+            hit_count = hit_count + 1,
+            last_seen_at = datetime('now')
+        """,
+        (w, source, telegram_id, game_date),
+    )
 
 
 def deactivate_words(conn: sqlite3.Connection, words: list[str]) -> int:

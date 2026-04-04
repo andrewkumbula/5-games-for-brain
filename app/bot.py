@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import date
 from aiogram import Bot, Dispatcher, F, Router
@@ -17,6 +18,8 @@ from app.keyboard import (
 )
 from app.text import normalize_word, is_valid_word
 from app.words import load_word_lists, check_dictionary, ensure_answers
+
+log = logging.getLogger(__name__)
 
 
 def _load_words_from_db_or_json():
@@ -336,6 +339,17 @@ def build_router() -> Router:
             strict=STRICT_DICTIONARY,
         )
         if not accepted:
+            try:
+                with db.get_conn(DB_PATH) as conn:
+                    db.record_dict_unknown_guess(
+                        conn,
+                        guess_word,
+                        source="telegram",
+                        telegram_id=message.from_user.id,
+                        game_date=today_game_date().isoformat(),
+                    )
+            except Exception:
+                log.exception("record_dict_unknown_guess (telegram)")
             await message.answer(
                 "Слова нет в словаре.",
                 reply_markup=build_keyboard(),

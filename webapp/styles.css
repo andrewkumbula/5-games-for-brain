@@ -629,20 +629,21 @@ body {
 .assoc-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-auto-rows: minmax(40px, auto);
+  gap: 6px;
   flex: 1;
   align-content: start;
 }
 
 .assoc-tile {
-  min-height: 44px;
-  padding: 8px 6px;
+  min-height: 40px;
+  padding: 6px 4px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   font: inherit;
-  font-size: clamp(0.65rem, 2.8vmin, 0.78rem);
+  font-size: clamp(0.6rem, 2.5vmin, 0.74rem);
   font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 1.15;

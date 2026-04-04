@@ -16,7 +16,11 @@ test("associations.json: есть пазлы", () => {
   const data = JSON.parse(raw);
   assert.ok(Array.isArray(data.puzzles) && data.puzzles.length > 0, "puzzles не пустой");
   const p = data.puzzles[0];
-  assert.ok(Array.isArray(p.groups) && p.groups.length === 4, "4 группы");
+  assert.ok(Array.isArray(p.groups) && p.groups.length === 6, "6 групп");
+  assert.ok(
+    p.groups.every((g) => Array.isArray(g.items) && g.items.length === 4),
+    "по 4 слова в группе",
+  );
 });
 
 test("cryptograms.json: есть фразы", () => {

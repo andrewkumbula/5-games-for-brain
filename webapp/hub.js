@@ -36,7 +36,7 @@ function gameStatus(game) {
       return "in_progress";
     }
     if (game === "associations") {
-      const raw = localStorage.getItem(`fiveletters:associations:v2:${today}`);
+      const raw = localStorage.getItem(`fiveletters:associations:v3:${today}`);
       if (!raw) return null;
       return JSON.parse(raw).status || null;
     }

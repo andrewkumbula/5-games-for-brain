@@ -334,6 +334,7 @@ async function submitGuess() {
   if (!allowedWords.has(guess)) {
     statusEl.textContent = "Слова нет в словаре";
     haptic("error");
+    reportUnknownGuess(guess);
     return;
   }
   const marks = evaluate(answer, guess);
@@ -361,6 +362,25 @@ function reportResult() {
     won: state.won,
   };
   fetch("/api/wordle/result", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+/** Слово из 5 букв, которого нет в allowed — на сервер для очереди проверки (ИИ / модерация). */
+function reportUnknownGuess(guess) {
+  if (!state?.gameDate || !guess) return;
+  const tg = window.Telegram?.WebApp;
+  const telegramId = tg?.initDataUnsafe?.user?.id;
+  const body = {
+    word: guess,
+    game_date: state.gameDate,
+  };
+  if (telegramId != null) {
+    body.telegram_id = telegramId;
+  }
+  fetch("/api/wordle/unknown-guess", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
